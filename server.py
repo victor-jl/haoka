@@ -249,6 +249,14 @@ if __name__ == '__main__':
     init_db()
     load_into_db()
     port = 8899
+    # Fetch public IP on startup
+    public_ip = "unknown"
+    try:
+        req = urllib.request.Request('https://api.ipify.org', headers={'User-Agent': 'curl/8.0'})
+        public_ip = urllib.request.urlopen(req, timeout=5).read().decode().strip()
+    except Exception:
+        pass
     print(f'Server running at http://localhost:{port}')
+    print(f'Public: http://{public_ip}:{port}' if public_ip != 'unknown' else '')
     print(f'Data cached in {DB_PATH}')
     http.server.HTTPServer(('0.0.0.0', port), Handler).serve_forever()

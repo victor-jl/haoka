@@ -101,7 +101,7 @@
 </div>
 
 <div class="header">
-  <h1>多平台商品数据汇总<span style="font-weight:400;font-size:12px;opacity:.7;margin-left:12px">四个接口返回数据合并展示</span><button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none">退出登录</button></h1>
+  <h1>多平台商品数据汇总<span style="font-weight:400;font-size:12px;opacity:.7;margin-left:12px">四个接口返回数据合并展示</span><span id="serverAddr" style="font-weight:400;font-size:11px;opacity:.5;margin-left:12px"></span><button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none">退出登录</button></h1>
 </div>
 
 <div class="container">
@@ -161,6 +161,7 @@ const sourceCls = {
 };
 
 async function loadData() {
+  document.getElementById('serverAddr').textContent = location.host;
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">加载中...</td></tr>';
   const results = await Promise.allSettled([
     fetch('/api/api1').then(r=>r.json()),
