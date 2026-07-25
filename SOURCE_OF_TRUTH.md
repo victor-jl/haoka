@@ -37,3 +37,4 @@ haoka/
 - 修改前端列权限时更新 `index.html` 中的 `login-hide` class 逻辑。
 - 变更登录密码时更新 `server.py#L12` 的 `LOGIN_PWD`。
 - 修改订单链接时更新 `index.html` 中的 `setOrderUrls()` 函数。
+- 通过 `POST /api/update` 传入 curl 命令更新某个 API 的缓存数据。

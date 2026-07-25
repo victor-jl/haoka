@@ -5,13 +5,14 @@ import http.server
 import os
 import re
 import sqlite3
+import shlex
 import subprocess
 import time
 
 DB_PATH = '/tmp/product_data.db'
 API_FILES = [('api1', '/tmp/api1.json'), ('api2', '/tmp/api2.json'),
              ('api3', '/tmp/api3.json'), ('api4', '/tmp/api4.json')]
-LOGIN_PWD = 'Shiliang521'
+LOGIN_PWD = os.environ.get('LOGIN_PWD', '')
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -51,7 +52,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_response(204)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, phone')
         self.end_headers()
 
     def do_GET(self):
@@ -77,7 +78,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             html = open(os.path.join(os.path.dirname(__file__), 'index.html'), 'rb').read()
             self.wfile.write(html)
         else:
-            super().do_GET()
+            self.send_response(404)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": False, "error": "not found"}, ensure_ascii=False).encode('utf-8'))
 
     def do_POST(self):
         length = int(self.headers.get('Content-Length', 0))
@@ -92,31 +97,37 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         elif self.path == '/api/update':
             name = payload.get('name', '')
             curl_cmd = payload.get('curl', '')
-            if name not in ('api1', 'api2', 'api3', 'api4'):
+            phone = payload.get('phone', '') or self.headers.get('phone', '')
+            if not phone or not re.match(r'^1\d{10}$', phone):
+                resp = {"ok": False, "error": "invalid or missing phone"}
+            elif name not in ('api1', 'api2', 'api3', 'api4'):
                 resp = {"ok": False, "error": "invalid name"}
             elif not curl_cmd:
                 resp = {"ok": False, "error": "curl required"}
-            elif not re.match(r'^[a-zA-Z0-9\s\-_.:/?#\[\]@!$&\'\"()+,;=%]+$', curl_cmd):
-                resp = {"ok": False, "error": "curl contains unsafe characters"}
             else:
-                try:
-                    result = subprocess.run(curl_cmd, shell=True, capture_output=True, text=True, timeout=60)
-                    if result.returncode != 0:
-                        resp = {"ok": False, "error": "curl failed: " + (result.stderr or result.stdout)[:200]}
-                    else:
-                        data = json.loads(result.stdout)
-                        conn = sqlite3.connect(DB_PATH)
-                        conn.execute('INSERT OR REPLACE INTO api_cache (name, data, updated_at) VALUES (?,?,?)',
-                                     (name, json.dumps(data, ensure_ascii=False), int(time.time())))
-                        conn.commit()
-                        conn.close()
-                        resp = {"ok": True, "name": name}
-                except json.JSONDecodeError:
-                    resp = {"ok": False, "error": "response not valid JSON"}
-                except subprocess.TimeoutExpired:
-                    resp = {"ok": False, "error": "curl timeout (60s)"}
-                except Exception as e:
-                    resp = {"ok": False, "error": str(e)[:200]}
+                if phone:
+                    curl_cmd = curl_cmd.replace('{phone}', phone)
+                if not re.match(r'^[a-zA-Z0-9\s\-_.:/?#\[\]@!$&\'\"()+,;=%]+$', curl_cmd):
+                    resp = {"ok": False, "error": "curl contains unsafe characters"}
+                else:
+                    try:
+                        result = subprocess.run(shlex.split(curl_cmd), shell=False, capture_output=True, text=True, timeout=60)
+                        if result.returncode != 0:
+                            resp = {"ok": False, "error": "curl failed: " + (result.stderr or result.stdout)[:200]}
+                        else:
+                            data = json.loads(result.stdout)
+                            conn = sqlite3.connect(DB_PATH)
+                            conn.execute('INSERT OR REPLACE INTO api_cache (name, data, updated_at) VALUES (?,?,?)',
+                                         (name, json.dumps(data, ensure_ascii=False), int(time.time())))
+                            conn.commit()
+                            conn.close()
+                            resp = {"ok": True, "name": name}
+                    except json.JSONDecodeError:
+                        resp = {"ok": False, "error": "response not valid JSON"}
+                    except subprocess.TimeoutExpired:
+                        resp = {"ok": False, "error": "curl timeout (60s)"}
+                    except Exception as e:
+                        resp = {"ok": False, "error": str(e)[:200]}
         else:
             self.send_response(404)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
