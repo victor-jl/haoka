@@ -3,7 +3,9 @@
 import json
 import http.server
 import os
+import re
 import sqlite3
+import subprocess
 import time
 
 DB_PATH = '/tmp/product_data.db'
@@ -89,16 +91,39 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             resp = {"ok": payload.get('password') == LOGIN_PWD}
         elif self.path == '/api/update':
             name = payload.get('name', '')
-            data = payload.get('data', {})
-            if name in ('api1', 'api2', 'api3', 'api4'):
-                conn = sqlite3.connect(DB_PATH)
-                conn.execute('INSERT OR REPLACE INTO api_cache (name, data, updated_at) VALUES (?,?,?)',
-                             (name, json.dumps(data, ensure_ascii=False), int(time.time())))
-                conn.commit()
-                conn.close()
-                resp = {"ok": True, "name": name}
-            else:
+            curl_cmd = payload.get('curl', '')
+            if name not in ('api1', 'api2', 'api3', 'api4'):
                 resp = {"ok": False, "error": "invalid name"}
+            elif not curl_cmd:
+                resp = {"ok": False, "error": "curl required"}
+            elif not re.match(r'^[a-zA-Z0-9\s\-_.:/?#\[\]@!$&\'\"()+,;=%]+$', curl_cmd):
+                resp = {"ok": False, "error": "curl contains unsafe characters"}
+            else:
+                try:
+                    result = subprocess.run(curl_cmd, shell=True, capture_output=True, text=True, timeout=60)
+                    if result.returncode != 0:
+                        resp = {"ok": False, "error": "curl failed: " + (result.stderr or result.stdout)[:200]}
+                    else:
+                        data = json.loads(result.stdout)
+                        conn = sqlite3.connect(DB_PATH)
+                        conn.execute('INSERT OR REPLACE INTO api_cache (name, data, updated_at) VALUES (?,?,?)',
+                                     (name, json.dumps(data, ensure_ascii=False), int(time.time())))
+                        conn.commit()
+                        conn.close()
+                        resp = {"ok": True, "name": name}
+                except json.JSONDecodeError:
+                    resp = {"ok": False, "error": "response not valid JSON"}
+                except subprocess.TimeoutExpired:
+                    resp = {"ok": False, "error": "curl timeout (60s)"}
+                except Exception as e:
+                    resp = {"ok": False, "error": str(e)[:200]}
+        else:
+            self.send_response(404)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"ok": False, "error": "not found"}, ensure_ascii=False).encode('utf-8'))
+            return
         self.send_response(200)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')

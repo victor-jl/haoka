@@ -200,6 +200,7 @@ async function loadData() {
     remark: item.point || '',
   }));
 
+  const settleModeMap = {1:'月返', 2:'次月返', 3:'一次性', 4:'年返', 5:'季度返', 6:'半年返', 7:'一次性买断'};
   const list3 = (d3?.data || []).map(item => ({
     source: '172号卡', sourceUrl: 'haokaapi.lot-ml.com', sourceLoginUrl: 'https://haoka.lot-ml.com/', id: item.productID,
     name: item.productName || '',
@@ -207,7 +208,7 @@ async function loadData() {
     operator: item.operator || '',
     commission: item.sPriceRead || '-',
     price: item.price ? '¥' + item.price : '-',
-    settleMode: item.backMoneyType || '-',
+    settleMode: settleModeMap[item.backMoneyType] || item.backMoneyType || '-',
     createdAt: item.createTime || '',
     tags: [item.areaRead || '', item.disableArea ? '禁发' + item.disableArea : ''].filter(Boolean),
     age: (item.age1 || item.age2) ? (item.age1||'') + '~' + (item.age2||'') + '岁' : '-',
