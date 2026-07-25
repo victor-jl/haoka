@@ -20,6 +20,8 @@ ADMIN_PHONE = '17602111723'
 # In-memory stores for verification codes and sessions
 verification_codes = {}  # phone -> {code, expires_at}
 sessions = {}  # token -> {phone, is_admin, created_at}
+verify_attempts = {}  # ip+phone -> [timestamp, ...]
+send_code_limits = {}  # phone -> [timestamp, ...]
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -117,26 +119,49 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             if not re.match(r'^1\d{10}$', phone):
                 resp = {"ok": False, "error": "invalid phone"}
             else:
-                code = str(random.randint(100000, 999999))
-                verification_codes[phone] = {'code': code, 'expires_at': time.time() + 300}
-                print(f"[SMS Verification] Code for {phone}: {code}")
-                resp = {"ok": True}
+                now = time.time()
+                limits = send_code_limits.get(phone, [])
+                limits = [t for t in limits if now - t < 60]
+                if len(limits) >= 3:
+                    resp = {"ok": False, "error": "发送太频繁，请稍后再试"}
+                else:
+                    limits.append(now)
+                    send_code_limits[phone] = limits
+                    code = str(random.randint(100000, 999999))
+                    verification_codes[phone] = {'code': code, 'expires_at': now + 300}
+                    print(f"[SMS Verification] Code for {phone}: {code}")
+                    resp = {"ok": True}
         elif self.path == '/api/verify-code':
             phone = payload.get('phone', '')
             code = payload.get('code', '')
             stored = verification_codes.get(phone)
-            if not stored:
+            now = time.time()
+            # Rate limit: max 5 failed attempts in 5min per ip+phone
+            client_ip = self.client_address[0]
+            attempt_key = client_ip + '|' + phone
+            attempts = verify_attempts.get(attempt_key, [])
+            attempts = [t for t in attempts if now - t < 300]
+            if len(attempts) >= 5:
+                resp = {"ok": False, "error": "尝试次数过多，请5分钟后重试"}
+            elif not stored:
                 resp = {"ok": False, "error": "请先获取验证码"}
-            elif time.time() > stored['expires_at']:
+            elif now > stored['expires_at']:
                 verification_codes.pop(phone, None)
+                attempts.append(now)
+                verify_attempts[attempt_key] = attempts
                 resp = {"ok": False, "error": "验证码已过期"}
             elif stored['code'] != code:
+                attempts.append(now)
+                verify_attempts[attempt_key] = attempts
                 resp = {"ok": False, "error": "验证码错误"}
             elif phone != ADMIN_PHONE:
                 verification_codes.pop(phone, None)
+                attempts.append(now)
+                verify_attempts[attempt_key] = attempts
                 resp = {"ok": False, "error": "该手机号无登录权限"}
             else:
                 verification_codes.pop(phone, None)
+                verify_attempts.pop(attempt_key, None)
                 token = secrets.token_hex(32)
                 sessions[token] = {'phone': phone, 'is_admin': True, 'created_at': time.time()}
                 resp = {"ok": True, "token": token, "is_admin": True}

@@ -266,10 +266,10 @@ function renderTable() {
       <td title="${esc(item.operator)||'-'}">${esc(item.operator) || '-'}</td>
       <td class="login-hide" title="${esc(item.commission)}"><span class="commission">${esc(item.commission)}</span></td>
       <td class="login-hide" title="${esc(item.price)}"><span class="price">${esc(item.price)}</span></td>
-      <td class="login-hide" title="${item.settleMode}">${item.settleMode}</td>
+      <td class="login-hide" title="${esc(item.settleMode)}">${esc(item.settleMode)}</td>
       <td style="white-space:normal" title="${esc((item.tags||[]).join(', '))}">${tagsHtml}</td>
-      <td style="font-size:12px" title="${item.age}">${item.age}</td>
-      <td style="font-size:12px;color:#666" title="${item.createdAt}">${item.createdAt}</td>
+      <td style="font-size:12px" title="${esc(item.age)}">${esc(item.age)}</td>
+      <td style="font-size:12px;color:#666" title="${esc(item.createdAt)}">${esc(item.createdAt)}</td>
       <td class="login-hide" title="${esc(item.remark)}">${esc(item.remark) || '-'}</td>
       <td title="${esc(item.detailUrl)}"><a href="${esc(item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
       <td><img src="https://api.qrserver.com/v1/create-qr-code/?size=40x40&data=${encodeURIComponent(item.shareLink || item.detailUrl)}" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(this.src)" title="点击放大"></td>
