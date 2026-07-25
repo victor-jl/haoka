@@ -42,8 +42,9 @@ def get_config(key, default='', max_age=60):
             resp = json.loads(urllib.request.urlopen(req, timeout=5).read())
             _config_cache = {row['key']: row['value'] for row in resp}
             _config_cache_time = now
-        except Exception:
-            pass  # 网络失败时使用缓存值（如有）
+        except Exception as e:
+            print(f"[Config] Failed to fetch from Supabase: {e}")
+    # 有缓存时用缓存值，无缓存时返回 default
     return _config_cache.get(key, default)
 
 # Submail SMS config (set via environment variables)
