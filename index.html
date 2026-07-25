@@ -162,9 +162,9 @@ const sourceCls = {
 
 async function loadData() {
   fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
-    document.getElementById('serverAddr').textContent = d.ip+':8899';
+    document.getElementById('serverAddr').innerHTML = '<a href="http://'+d.ip+':8899" target="_blank" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">'+d.ip+':8899</a>';
   }).catch(()=>{
-    document.getElementById('serverAddr').textContent = location.host;
+    document.getElementById('serverAddr').innerHTML = '<a href="http://'+location.host+'" target="_blank" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">'+location.host+'</a>';
   });
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">加载中...</td></tr>';
   const results = await Promise.allSettled([
