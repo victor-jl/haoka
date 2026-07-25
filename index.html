@@ -31,6 +31,7 @@
   body.share-mode .table-wrap { border-radius: 0; box-shadow: none; }
   body.share-mode .table-inner { max-height: 100vh; }
   body.share-mode .login-hide, body.share-mode .order-btn, body.share-mode .share-btn { display: none !important; }
+  body:not(.admin-mode) .login-hide { display: none !important; }
   .order-btn { display: inline-flex; align-items: center; padding: 4px 10px; color: #fff; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: opacity .2s; }
   .order-btn:hover { opacity: .8; }
   .login-overlay { position: fixed; inset: 0; background: #f5f6fa; display: flex; align-items: center; justify-content: center; z-index: 9999; }
@@ -42,6 +43,8 @@
   .login-box .login-btn { width: 100%; padding: 10px; background: #5c6bc0; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; }
   .login-box .login-btn:hover { background: #3f51b5; }
   .login-box .login-err { color: #ef5350; font-size: 12px; margin-top: 8px; display: none; }
+  .code-btn { padding: 7px 12px; border: 1px solid #5c6bc0; border-radius: 8px; background: #5c6bc0; color: #fff; font-size: 12px; cursor: pointer; white-space: nowrap; font-weight:600; }
+  .code-btn:disabled { background: #bbb; border-color: #bbb; cursor: not-allowed; }
   .logout-btn { display: inline-flex; align-items: center; padding: 4px 12px; background: transparent; color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.4); border-radius: 6px; font-size: 11px; cursor: pointer; margin-left: 14px; transition: all .2s; }
   .logout-btn:hover { background: rgba(255,255,255,.15); }
   .qr-modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 99999; cursor: pointer; }
@@ -86,10 +89,14 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <h2>登录</h2>
-    <p>请输入密码登录后查看数据</p>
-    <input type="password" id="loginPwd" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+    <p>手机号验证码登录</p>
+    <input type="text" id="loginPhone" placeholder="手机号" maxlength="11" style="margin-bottom:8px" onkeydown="if(event.key==='Enter')document.getElementById('loginCode').focus()">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="loginCode" placeholder="验证码" maxlength="6" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="code-btn" id="sendCodeBtn" onclick="sendCode()">获取验证码</button>
+    </div>
     <button class="login-btn" onclick="doLogin()">登录</button>
-    <div class="login-err" id="loginErr">密码错误，请重试</div>
+    <div class="login-err" id="loginErr"></div>
   </div>
 </div>
 
@@ -306,7 +313,86 @@ document.querySelector('.table-inner').addEventListener('scroll', function() {
   document.getElementById('backToTop').style.display = this.scrollTop > 300 ? 'flex' : 'none';
 });
 
-// ---- Login ----
+// ---- Login (Phone Verification Code) ----
+var codeTimer = null;
+var codeCountdown = 0;
+
+function sendCode() {
+  var phone = document.getElementById('loginPhone').value.trim();
+  if (!/^1\d{10}$/.test(phone)) {
+    document.getElementById('loginErr').textContent = '请输入正确的手机号';
+    document.getElementById('loginErr').style.display = 'block';
+    return;
+  }
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('sendCodeBtn').disabled = true;
+  fetch('/api/send-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:phone})})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if (d.ok) {
+        codeCountdown = 60;
+        document.getElementById('sendCodeBtn').textContent = codeCountdown + 's';
+        if (codeTimer) clearInterval(codeTimer);
+        codeTimer = setInterval(function(){
+          codeCountdown--;
+          if (codeCountdown <= 0) {
+            clearInterval(codeTimer);
+            document.getElementById('sendCodeBtn').textContent = '重新获取';
+            document.getElementById('sendCodeBtn').disabled = false;
+          } else {
+            document.getElementById('sendCodeBtn').textContent = codeCountdown + 's';
+          }
+        }, 1000);
+      } else {
+        document.getElementById('loginErr').textContent = d.error || '发送失败';
+        document.getElementById('loginErr').style.display = 'block';
+        document.getElementById('sendCodeBtn').disabled = false;
+      }
+    });
+}
+
+function doLogin() {
+  var phone = document.getElementById('loginPhone').value.trim();
+  var code = document.getElementById('loginCode').value.trim();
+  if (!phone || !code) {
+    document.getElementById('loginErr').textContent = '请填写手机号和验证码';
+    document.getElementById('loginErr').style.display = 'block';
+    return;
+  }
+  fetch('/api/verify-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:phone, code:code})})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if (d.ok) {
+        localStorage.setItem('token', d.token);
+        localStorage.setItem('is_admin', '1');
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = '';
+        document.body.classList.add('admin-mode');
+      } else {
+        document.getElementById('loginErr').textContent = d.error || '验证失败';
+        document.getElementById('loginErr').style.display = 'block';
+      }
+    });
+}
+
+function doLogout() {
+  var token = localStorage.getItem('token');
+  if (token) {
+    fetch('/api/logout', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:token})});
+  }
+  localStorage.removeItem('token');
+  localStorage.removeItem('is_admin');
+  document.body.classList.remove('admin-mode');
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginPhone').value = '';
+  document.getElementById('loginCode').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+  if (codeTimer) clearInterval(codeTimer);
+  document.getElementById('sendCodeBtn').textContent = '获取验证码';
+  document.getElementById('sendCodeBtn').disabled = false;
+}
+
 function refreshData() {
   fetch('/api/refresh').then(function(r){return r.json()}).then(function(d){
     if (d.ok) { loadData(); }
@@ -316,34 +402,26 @@ function showQR(src) {
   document.getElementById('qrBigImg').src = src.replace('size=40x40','size=400x400');
   document.getElementById('qrModal').style.display = 'flex';
 }
-function doLogin() {
-  var pwd = document.getElementById('loginPwd').value;
-  fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pwd})})
-    .then(function(r){return r.json()})
-    .then(function(d){
-      if (d.ok) {
-        localStorage.setItem('logged_in', '1');
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('logoutBtn').style.display = '';
-      } else {
-        document.getElementById('loginErr').style.display = 'block';
-      }
-    });
-}
-function doLogout() {
-  localStorage.removeItem('logged_in');
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.getElementById('loginPwd').value = '';
-  document.getElementById('loginErr').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'none';
-}
 
 var isShare = location.pathname === '/share';
 if (isShare) {
   document.getElementById('loginOverlay').style.display = 'none';
-} else if (localStorage.getItem('logged_in') === '1') {
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = '';
+} else {
+  var token = localStorage.getItem('token');
+  if (token) {
+    fetch('/api/check-session?token=' + encodeURIComponent(token))
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if (d.ok && d.is_admin) {
+          document.getElementById('loginOverlay').style.display = 'none';
+          document.getElementById('logoutBtn').style.display = '';
+          document.body.classList.add('admin-mode');
+        } else {
+          localStorage.removeItem('token');
+          localStorage.removeItem('is_admin');
+        }
+      });
+  }
 }
 
 loadData();

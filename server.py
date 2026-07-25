@@ -3,16 +3,23 @@
 import json
 import http.server
 import os
+import random
 import re
-import sqlite3
+import secrets
 import shlex
+import sqlite3
 import subprocess
 import time
+import urllib.parse
 
 DB_PATH = '/tmp/product_data.db'
 API_FILES = [('api1', '/tmp/api1.json'), ('api2', '/tmp/api2.json'),
              ('api3', '/tmp/api3.json'), ('api4', '/tmp/api4.json')]
-LOGIN_PWD = os.environ.get('LOGIN_PWD', '')
+ADMIN_PHONE = '17602111723'
+
+# In-memory stores for verification codes and sessions
+verification_codes = {}  # phone -> {code, expires_at}
+sessions = {}  # token -> {phone, is_admin, created_at}
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -58,6 +65,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/api/'):
             name = self.path.split('/api/')[1].split('?')[0]
+            if name == 'check-session':
+                qs = urllib.parse.parse_qs(self.path.split('?')[1]) if '?' in self.path else {}
+                token = (qs.get('token') or [''])[0]
+                session = sessions.get(token)
+                resp = {"ok": bool(session)}
+                if session:
+                    resp['is_admin'] = session['is_admin']
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
+                return
             if name == 'refresh':
                 load_into_db()
                 self.send_response(200)
@@ -92,8 +112,38 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             payload = json.loads(body)
         except Exception:
             payload = {}
-        if self.path == '/api/login':
-            resp = {"ok": payload.get('password') == LOGIN_PWD}
+        if self.path == '/api/send-code':
+            phone = payload.get('phone', '')
+            if not re.match(r'^1\d{10}$', phone):
+                resp = {"ok": False, "error": "invalid phone"}
+            else:
+                code = str(random.randint(100000, 999999))
+                verification_codes[phone] = {'code': code, 'expires_at': time.time() + 300}
+                print(f"[SMS Verification] Code for {phone}: {code}")
+                resp = {"ok": True}
+        elif self.path == '/api/verify-code':
+            phone = payload.get('phone', '')
+            code = payload.get('code', '')
+            stored = verification_codes.get(phone)
+            if not stored:
+                resp = {"ok": False, "error": "请先获取验证码"}
+            elif time.time() > stored['expires_at']:
+                verification_codes.pop(phone, None)
+                resp = {"ok": False, "error": "验证码已过期"}
+            elif stored['code'] != code:
+                resp = {"ok": False, "error": "验证码错误"}
+            elif phone != ADMIN_PHONE:
+                verification_codes.pop(phone, None)
+                resp = {"ok": False, "error": "该手机号无登录权限"}
+            else:
+                verification_codes.pop(phone, None)
+                token = secrets.token_hex(32)
+                sessions[token] = {'phone': phone, 'is_admin': True, 'created_at': time.time()}
+                resp = {"ok": True, "token": token, "is_admin": True}
+        elif self.path == '/api/logout':
+            token = payload.get('token', '')
+            sessions.pop(token, None)
+            resp = {"ok": True}
         elif self.path == '/api/update':
             name = payload.get('name', '')
             curl_cmd = payload.get('curl', '')
