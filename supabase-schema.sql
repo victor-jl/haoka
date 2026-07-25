@@ -43,3 +43,19 @@ CREATE POLICY "允许公开读取"
 
 -- 只有持有 service_role key 的后台脚本才能写入
 -- （更新脚本里用 service_role key，不需要额外建 policy）
+
+-- ============================================
+-- app_config 配置表（存储敏感信息，以 hash 形式）
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_config (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
+
+-- 允许公开读取（值已做 hash 处理，如密码是 SHA-256）
+CREATE POLICY "允许公开读取配置"
+  ON app_config FOR SELECT
+  USING (true);

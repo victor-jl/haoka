@@ -154,8 +154,8 @@
 // ===== Supabase 配置 =====
 const SUPABASE_URL = 'https://rnqrgmaeibwbfeqkjpky.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucXJnbWFlaWJ3YmZlcWtqcGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODQ0MjUsImV4cCI6MjEwMDU2MDQyNX0.QUDGuzcCwpPD2jH8sZ0Kd4wdNGcQKYXwj0EhfRveNME';
-// 管理员密码（部署前请修改为你自己的密码）
-const ADMIN_PASSWORD = 'haoka888';
+// 管理员密码将从 Supabase 的 app_config 表中读取（密码以 hash 形式存储）
+let ADMIN_PASSWORD_HASH = '';
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -275,13 +275,27 @@ function filterTable() { renderTable(); }
 
 function esc(s) { if (!s && s !== 0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
-// ===== 登录（密码验证） =====
+// ===== 登录（密码验证，hash 从 Supabase 读取） =====
 async function hashPassword(pwd) {
   const encoder = new TextEncoder();
   const data = encoder.encode(pwd);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function fetchAdminConfig() {
+  // 从 Supabase 读取管理员配置（密码 hash 和手机号）
+  const { data, error } = await supabase
+    .from('app_config')
+    .select('key, value');
+  if (error) {
+    console.error('读取配置失败:', error);
+    return;
+  }
+  for (const row of data || []) {
+    if (row.key === 'admin_password_hash') ADMIN_PASSWORD_HASH = row.value;
+  }
 }
 
 async function doAdminLogin() {
@@ -291,9 +305,12 @@ async function doAdminLogin() {
     document.getElementById('loginErr').style.display = 'block';
     return;
   }
+  // 如果还没加载配置，先加载
+  if (!ADMIN_PASSWORD_HASH) {
+    await fetchAdminConfig();
+  }
   const hash = await hashPassword(pwd);
-  const expectedHash = await hashPassword(ADMIN_PASSWORD);
-  if (hash === expectedHash) {
+  if (hash === ADMIN_PASSWORD_HASH) {
     localStorage.setItem('admin_logged_in', '1');
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('logoutBtn').style.display = '';
@@ -353,6 +370,8 @@ if (isShare) {
     document.getElementById('logoutBtn').style.display = '';
     document.body.classList.add('admin-mode');
   }
+  // 预加载管理员配置
+  fetchAdminConfig();
 }
 
 loadData();

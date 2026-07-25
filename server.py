@@ -16,7 +16,7 @@ import urllib.request
 DB_PATH = '/tmp/product_data.db'
 API_FILES = [('api1', '/tmp/api1.json'), ('api2', '/tmp/api2.json'),
              ('api3', '/tmp/api3.json'), ('api4', '/tmp/api4.json')]
-ADMIN_PHONE = '17602111723'
+ADMIN_PHONE = ''  # 已迁移到 Supabase app_config 表
 
 # Submail SMS config (set via environment variables)
 SUBMAIL_APPID = os.environ.get('SUBMAIL_APPID', '')
