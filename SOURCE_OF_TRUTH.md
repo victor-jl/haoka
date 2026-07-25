@@ -11,7 +11,7 @@
 | 前端页面代码 | `index.html` | 单页 HTML，含 JS 与 CSS |
 | 数据来源配置 | `server.py#L10-L11` | 4 个 json 文件 → SQLite 缓存 |
 | 登录密码 | `server.py#L12` | `LOGIN_PWD = 'Shiliang521'` |
-| API 路由 | `server.py#L47-L89` | GET /api/api1~4, /api/refresh; POST /api/login |
+| API 路由 | `server.py#L55-L106` | GET /api/api1~4, /api/refresh; POST /api/login, /api/update |
 | 权限控制 | `index.html#L343-L348` | 分享页免登录，主页面密码验证 |
 | 订单链接 | `index.html#L292-L309` | 4 个平台各自的订单页 URL |
 | GitHub 仓库 | `https://github.com/victor-jl/haoka` | |

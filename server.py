@@ -45,6 +45,13 @@ def get_from_db(name):
     return {"error": "not found"}
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+
     def do_GET(self):
         if self.path.startswith('/api/'):
             name = self.path.split('/api/')[1].split('?')[0]
@@ -71,22 +78,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             super().do_GET()
 
     def do_POST(self):
+        length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(length).decode('utf-8') if length else '{}'
+        resp = {"ok": False}
+        try:
+            payload = json.loads(body)
+        except Exception:
+            payload = {}
         if self.path == '/api/login':
-            length = int(self.headers.get('Content-Length', 0))
-            body = self.rfile.read(length).decode('utf-8') if length else '{}'
-            try:
-                data = json.loads(body)
-                ok = data.get('password') == LOGIN_PWD
-            except Exception:
-                ok = False
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json; charset=utf-8')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({"ok": ok}, ensure_ascii=False).encode('utf-8'))
-        else:
-            self.send_response(404)
-            self.end_headers()
+            resp = {"ok": payload.get('password') == LOGIN_PWD}
+        elif self.path == '/api/update':
+            name = payload.get('name', '')
+            data = payload.get('data', {})
+            if name in ('api1', 'api2', 'api3', 'api4'):
+                conn = sqlite3.connect(DB_PATH)
+                conn.execute('INSERT OR REPLACE INTO api_cache (name, data, updated_at) VALUES (?,?,?)',
+                             (name, json.dumps(data, ensure_ascii=False), int(time.time())))
+                conn.commit()
+                conn.close()
+                resp = {"ok": True, "name": name}
+            else:
+                resp = {"ok": False, "error": "invalid name"}
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(resp, ensure_ascii=False).encode('utf-8'))
 
 if __name__ == '__main__':
     init_db()
