@@ -157,7 +157,12 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // 管理员密码将从 Supabase 的 app_config 表中读取（密码以 hash 形式存储）
 let ADMIN_PASSWORD_HASH = '';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase = null;
+try {
+  supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+} catch (e) {
+  console.error('Supabase init failed:', e);
+}
 
 // ===== 状态 =====
 if (location.pathname === '/share') document.body.classList.add('share-mode');
@@ -175,6 +180,10 @@ const sourceCls = {
 async function loadData() {
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">加载中...</td></tr>';
   
+  if (!supabase) {
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">数据库连接未就绪，请刷新页面重试</td></tr>';
+    return;
+  }
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -286,6 +295,10 @@ async function hashPassword(pwd) {
 
 async function fetchAdminConfig() {
   // 从 Supabase 读取管理员配置（密码 hash 和手机号）
+  if (!supabase) {
+    console.error('Supabase 未初始化，无法读取配置');
+    return;
+  }
   const { data, error } = await supabase
     .from('app_config')
     .select('key, value');
