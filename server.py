@@ -11,11 +11,40 @@ import sqlite3
 import subprocess
 import time
 import urllib.parse
+import urllib.request
 
 DB_PATH = '/tmp/product_data.db'
 API_FILES = [('api1', '/tmp/api1.json'), ('api2', '/tmp/api2.json'),
              ('api3', '/tmp/api3.json'), ('api4', '/tmp/api4.json')]
 ADMIN_PHONE = '17602111723'
+
+# Submail SMS config (set via environment variables)
+SUBMAIL_APPID = os.environ.get('SUBMAIL_APPID', '')
+SUBMAIL_APPKEY = os.environ.get('SUBMAIL_APPKEY', '')
+SUBMAIL_PROJECT = os.environ.get('SUBMAIL_PROJECT', '')  # 短信模板ID
+
+def send_sms_code(phone, code):
+    """Send verification code via Submail API, fallback to console print."""
+    if SUBMAIL_APPID and SUBMAIL_APPKEY and SUBMAIL_PROJECT:
+        try:
+            data = urllib.parse.urlencode({
+                'appid': SUBMAIL_APPID,
+                'signature': SUBMAIL_APPKEY,
+                'to': phone,
+                'project': SUBMAIL_PROJECT,
+                'vars': json.dumps({"code": code, "time": "5"}, ensure_ascii=False),
+            }).encode()
+            req = urllib.request.Request(
+                'https://api.submail.cn/message/xsend.json',
+                data=data,
+                headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            )
+            resp = json.loads(urllib.request.urlopen(req, timeout=10).read())
+            if resp.get('status') != 'success':
+                print(f"[SMS Warning] Submail send failed: {resp}")
+        except Exception as e:
+            print(f"[SMS Warning] Submail error: {e}")
+    print(f"[SMS Verification] Code for {phone}: {code}")
 
 # In-memory stores for verification codes and sessions
 verification_codes = {}  # phone -> {code, expires_at}
@@ -129,7 +158,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     send_code_limits[phone] = limits
                     code = str(random.randint(100000, 999999))
                     verification_codes[phone] = {'code': code, 'expires_at': now + 300}
-                    print(f"[SMS Verification] Code for {phone}: {code}")
+                    send_sms_code(phone, code)
                     resp = {"ok": True}
         elif self.path == '/api/verify-code':
             phone = payload.get('phone', '')
