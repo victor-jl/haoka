@@ -16,7 +16,35 @@ import urllib.request
 DB_PATH = '/tmp/product_data.db'
 API_FILES = [('api1', '/tmp/api1.json'), ('api2', '/tmp/api2.json'),
              ('api3', '/tmp/api3.json'), ('api4', '/tmp/api4.json')]
-ADMIN_PHONE = ''  # 已迁移到 Supabase app_config 表
+
+# Supabase config (public anon key - RLS allows public read on app_config)
+SUPABASE_URL = 'https://rnqrgmaeibwbfeqkjpky.supabase.co'
+SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucXJnbWFlaWJ3YmZlcWtqcGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODQ0MjUsImV4cCI6MjEwMDU2MDQyNX0.QUDGuzcCwpPD2jH8sZ0Kd4wdNGcQKYXwj0EhfRveNME'
+
+# Cached config from Supabase app_config table
+_config_cache = {}
+_config_cache_time = 0
+
+def get_config(key, default='', max_age=60):
+    """Fetch a config value from Supabase app_config table, with caching."""
+    global _config_cache, _config_cache_time
+    now = time.time()
+    if now - _config_cache_time > max_age:
+        try:
+            req = urllib.request.Request(
+                f'{SUPABASE_URL}/rest/v1/app_config?select=key,value',
+                headers={
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': f'Bearer {SUPABASE_ANON_KEY}',
+                    'Accept': 'application/json',
+                }
+            )
+            resp = json.loads(urllib.request.urlopen(req, timeout=5).read())
+            _config_cache = {row['key']: row['value'] for row in resp}
+            _config_cache_time = now
+        except Exception:
+            pass  # 网络失败时使用缓存值（如有）
+    return _config_cache.get(key, default)
 
 # Submail SMS config (set via environment variables)
 SUBMAIL_APPID = os.environ.get('SUBMAIL_APPID', '')
@@ -183,7 +211,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 attempts.append(now)
                 verify_attempts[attempt_key] = attempts
                 resp = {"ok": False, "error": "验证码错误"}
-            elif phone != ADMIN_PHONE:
+            elif phone != get_config('admin_phone', ''):
                 verification_codes.pop(phone, None)
                 attempts.append(now)
                 verify_attempts[attempt_key] = attempts
