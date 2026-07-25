@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多平台商品数据汇总</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #2c3e50; }
+  .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; padding: 18px 30px; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header p { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+  .container { max-width: 100%; margin: 0 auto; padding: 16px 20px; }
+
+  .top-bar { display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .top-bar .left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .top-bar .right { display: flex; gap: 8px; align-items: center; }
+
+  .total-badge { background: #fff; border-radius: 8px; padding: 6px 16px; font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .total-badge strong { color: #5c6bc0; font-size: 16px; }
+
+  .search-input { padding: 7px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; width: 260px; outline: none; }
+  .search-input:focus { border-color: #5c6bc0; }
+
+  .filter-btn { padding: 5px 14px; border: 1px solid #ddd; border-radius: 16px; background: #fff; cursor: pointer; font-size: 12px; transition: all .2s; }
+  .filter-btn.active { background: #5c6bc0; color: #fff; border-color: #5c6bc0; }
+  .filter-btn:hover { border-color: #5c6bc0; }
+  body.share-mode .header, body.share-mode .logout-btn { display: none !important; }
+  body.share-mode .container { padding: 0; }
+  body.share-mode .table-wrap { border-radius: 0; box-shadow: none; }
+  body.share-mode .table-inner { max-height: 100vh; }
+  body.share-mode .login-hide, body.share-mode .order-btn, body.share-mode .share-btn { display: none !important; }
+  .order-btn { display: inline-flex; align-items: center; padding: 4px 10px; color: #fff; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: opacity .2s; }
+  .order-btn:hover { opacity: .8; }
+  .login-overlay { position: fixed; inset: 0; background: #f5f6fa; display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .login-box { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.1); text-align: center; width: 340px; }
+  .login-box h2 { margin-bottom: 6px; font-size: 18px; }
+  .login-box p { color: #888; font-size: 13px; margin-bottom: 20px; }
+  .login-box input { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; outline: none; margin-bottom: 12px; }
+  .login-box input:focus { border-color: #5c6bc0; }
+  .login-box .login-btn { width: 100%; padding: 10px; background: #5c6bc0; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; }
+  .login-box .login-btn:hover { background: #3f51b5; }
+  .login-box .login-err { color: #ef5350; font-size: 12px; margin-top: 8px; display: none; }
+  .logout-btn { display: inline-flex; align-items: center; padding: 4px 12px; background: transparent; color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.4); border-radius: 6px; font-size: 11px; cursor: pointer; margin-left: 14px; transition: all .2s; }
+  .logout-btn:hover { background: rgba(255,255,255,.15); }
+  .qr-modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 99999; cursor: pointer; }
+  .qr-modal img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+  .order-btn.s1 { background: #5c6bc0; }
+  .order-btn.s2 { background: #26a69a; }
+  .order-btn.s3 { background: #ef5350; }
+  .order-btn.s4 { background: #ff8f00; }
+  .share-btn { display: inline-flex; align-items: center; padding: 4px 12px; background: #78909c; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .2s; }
+  .share-btn:hover { background: #607d8b; }
+  .back-to-top { position: fixed; bottom: 30px; right: 30px; width: 44px; height: 44px; border-radius: 50%; background: #5c6bc0; color: #fff; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.25); display: none; align-items: center; justify-content: center; transition: all .2s; z-index: 999; }
+  .back-to-top:hover { background: #3f51b5; transform: translateY(-2px); }
+
+  .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .table-inner { max-height: calc(100vh - 180px); overflow-y: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  th { background: #f5f7ff; text-align: center; padding: 9px 12px; font-weight: 600; color: #37474f; border-bottom: 2px solid #e0e0e0; white-space: nowrap; position: sticky; top: 0; z-index: 1; font-size: 12px; }
+  td { padding: 8px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+  tr:hover td { background: #f8f9ff; }
+
+  .source-tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: 600; }
+  .source-tag.s1 { background: #5c6bc0; }
+  .source-tag.s2 { background: #26a69a; }
+  .source-tag.s3 { background: #ef5350; }
+  .source-tag.s4 { background: #ff8f00; }
+
+  .tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 3px; margin: 1px 2px; background: #e3f2fd; color: #1565c0; white-space: nowrap; }
+  .tag.green { background: #e8f5e9; color: #2e7d32; }
+  .tag.red { background: #ffebee; color: #c62828; }
+  .tag.purple { background: #f3e5f5; color: #6a1b9a; }
+  .tag.orange { background: #fff3e0; color: #e65100; }
+  .tag.teal { background: #e0f2f1; color: #00695c; }
+
+  .commission { color: #2e7d32; font-weight: 600; }
+  .price { color: #e65100; font-weight: 600; }
+
+  .no-result { text-align: center; padding: 60px; color: #999; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>登录</h2>
+    <p>请输入密码登录后查看数据</p>
+    <input type="password" id="loginPwd" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">登录</button>
+    <div class="login-err" id="loginErr">密码错误，请重试</div>
+  </div>
+</div>
+
+<div class="header">
+  <h1>多平台商品数据汇总<span style="font-weight:400;font-size:12px;opacity:.7;margin-left:12px">四个接口返回数据合并展示</span><button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none">退出登录</button></h1>
+</div>
+
+<div class="container">
+  <div class="top-bar">
+    <div class="left">
+      <span class="total-badge">总计 <strong id="totalCount">-</strong> 条</span>
+      <button class="filter-btn active" onclick="setFilter('all',this)">全部</button>
+      <button class="filter-btn" onclick="setFilter('卡之家',this)">卡之家</button>
+      <button class="filter-btn" onclick="setFilter('号易',this)">号易</button>
+      <button class="filter-btn" onclick="setFilter('172号卡',this)">172号卡</button>
+      <button class="filter-btn" onclick="setFilter('政企校园卡',this)">政企校园卡</button>
+    </div>
+    <div class="right">
+      <input class="search-input" id="searchInput" placeholder="搜索商品名称..." oninput="filterTable()">
+      <button class="share-btn" onclick="refreshData()">刷新数据</button>
+      <button class="share-btn" onclick="window.open(location.origin+'/share','_blank')">分享</button>
+      <a class="order-btn s1" id="orderKazhijia" href="javascript:void(0)" target="_blank">卡之家订单</a>
+      <a class="order-btn s2" href="https://et.haomifi.com/admin/order/index" target="_blank">号易订单</a>
+      <a class="order-btn s3" id="order172" href="javascript:void(0)" target="_blank">172号卡订单</a>
+      <a class="order-btn s4" href="https://unionesim.com/agent/order/index" target="_blank">政企校园卡订单</a>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-inner">
+      <table>
+        <thead><tr>
+          <th style="width:80px">来源</th>
+          <th style="width:340px">商品名称</th>
+          <th style="width:60px">运营商</th>
+          <th class="login-hide" style="width:70px">佣金</th>
+          <th class="login-hide" style="width:80px">价格</th>
+          <th class="login-hide" style="width:80px">结算方式</th>
+          <th style="width:160px">标签</th>
+          <th style="width:90px">年龄要求</th>
+          <th style="width:90px">创建时间</th>
+          <th class="login-hide" style="width:160px">备注</th>
+          <th style="width:100px">领取链接</th>
+          <th style="width:60px">扫码领取</th>
+        </tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+if (location.pathname === '/share') document.body.classList.add('share-mode');
+let allItems = [];
+let currentSource = 'all';
+
+const sourceLabels = {
+  'hk.ehaoka.com': '卡之家号卡',
+  'et.haomifi.com': '号易',
+  'haokaapi.lot-ml.com': '乐脉',
+  'unionesim.com': '政企校园卡',
+};
+
+const sourceCls = {
+  '卡之家': 's1',
+  '号易': 's2',
+  '172号卡': 's3',
+  '政企校园卡': 's4',
+};
+
+async function loadData() {
+  document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">加载中...</td></tr>';
+  const results = await Promise.allSettled([
+    fetch('/api/api1').then(r=>r.json()),
+    fetch('/api/api2').then(r=>r.json()),
+    fetch('/api/api3').then(r=>r.json()),
+    fetch('/api/api4').then(r=>r.json()),
+  ]);
+  const [d1, d2, d3, d4] = results.map(r => r.status === 'fulfilled' ? r.value : {error:true});
+
+  const list1 = (d1?.data?.list || []).map(item => ({
+    source: '卡之家', sourceUrl: 'hk.ehaoka.com', sourceLoginUrl: 'https://hk.ehaoka.com/admin/', id: item.id,
+    name: item.name || '',
+    detailUrl: 'https://www.ehaoka.cn/shop#/pages/goods/index?goodsId=' + item.id + '&promoCode=Y9iVicCA',
+    operator: ['','移动','联通','电信','广电'][item.operatorType] || item.operatorType || '',
+    commission: '¥' + (item.commission || 0),
+    price: item.price ? '¥' + item.price : '-',
+    settleMode: item.settleMode === 1 ? '一次性' : '次月返',
+    createdAt: item.createdAt || '',
+    tags: (item.tagsSelect || []).map(t => t.label),
+    age: (item.limitRule?.age || []).join('~') || '-',
+    shareLink: '',
+    remark: '',
+  }));
+
+  const list2 = (d2?.rows || []).map(item => ({
+    source: '号易', sourceUrl: 'et.haomifi.com', sourceLoginUrl: 'https://et.haomifi.com/admin/', id: item.id,
+    name: item.goods_name || '',
+    detailUrl: 'https://my.86hk.vip/#/pages/goods/details?goods_id=' + item.id + '&share_id=' + (item.agent_id || ''),
+    operator: '',
+    commission: '¥' + (item.agent_brokerage || 0),
+    price: '-',
+    settleMode: item.settlement_method === 2 ? '次月返' : '一次性',
+    createdAt: item.create_time || '',
+    tags: item.point_msg || [],
+    age: '-',
+    shareLink: item.out_url || '',
+    remark: item.point || '',
+  }));
+
+  const list3 = (d3?.data || []).map(item => ({
+    source: '172号卡', sourceUrl: 'haokaapi.lot-ml.com', sourceLoginUrl: 'https://haoka.lot-ml.com/', id: item.productID,
+    name: item.productName || '',
+    detailUrl: 'https://sztc.rimian666.cn/h5orderEn/index?pudID=' + (item.sn || '') + '&userid=' + (item.userSn || ''),
+    operator: item.operator || '',
+    commission: item.sPriceRead || '-',
+    price: item.price ? '¥' + item.price : '-',
+    settleMode: item.backMoneyType || '-',
+    createdAt: item.createTime || '',
+    tags: [item.areaRead || '', item.disableArea ? '禁发' + item.disableArea : ''].filter(Boolean),
+    age: (item.age1 || item.age2) ? (item.age1||'') + '~' + (item.age2||'') + '岁' : '-',
+    shareLink: '',
+    remark: item.remark || '',
+  }));
+
+  const list4 = (d4?.data || []).map(item => ({
+    source: '政企校园卡', sourceUrl: 'unionesim.com', sourceLoginUrl: 'https://unionesim.com/', id: item.id,
+    name: item.name || '',
+    detailUrl: item.public_product_url || 'https://unionesim.com/',
+    operator: item.yys || '',
+    commission: item.commission_display || '¥' + (item.actual_commission || 0),
+    price: item.yuezu_format || '-',
+    settleMode: item.js_type_text || '-',
+    createdAt: item.create_time || '',
+    tags: (item.tags || '').split(',').filter(Boolean),
+    age: item.age || '-',
+    shareLink: item.public_product_url || '',
+    remark: item.mark || '',
+  }));
+
+  allItems = [...list1, ...list2, ...list3, ...list4];
+  document.getElementById('totalCount').textContent = allItems.length;
+  renderTable();
+}
+
+function renderTable() {
+  const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filtered = allItems.filter(item => {
+    if (currentSource !== 'all' && item.source !== currentSource) return false;
+    if (keyword) {
+      const nameMatch = item.name.toLowerCase().includes(keyword);
+      const tagsMatch = (item.tags || []).some(t => t.toLowerCase().includes(keyword));
+      if (!nameMatch && !tagsMatch) return false;
+    }
+    return true;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="12" class="no-result">没有匹配的数据</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(item => {
+    const cls = sourceCls[item.source] || 's1';
+    const tagsHtml = (item.tags || []).map(t => {
+      const c = (t||'').includes('全国') ? 'green' : (t||'').includes('仅发')||(t||'').includes('禁发') ? 'red' : (t||'').includes('长期') ? 'purple' : (t||'').includes('优惠') ? 'orange' : (t||'').includes('宽带') ? 'teal' : '';
+      return `<span class="tag ${c}">${esc(t)}</span>`;
+    }).join('');
+    return `<tr>
+      <td title="${esc(item.sourceUrl)}"><a href="${esc(item.sourceLoginUrl)}" target="_blank" style="text-decoration:none"><span class="source-tag ${cls}">${esc(item.source)}</span><span class="login-hide" style="font-size:10px;color:#999;margin-left:4px">${esc(item.sourceUrl)}</span></a></td>
+      <td title="${esc(item.name)}"><a href="${esc(item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none;font-weight:600">${esc(item.name)}</a></td>
+      <td title="${esc(item.operator)||'-'}">${esc(item.operator) || '-'}</td>
+      <td class="login-hide" title="${item.commission}"><span class="commission">${item.commission}</span></td>
+      <td class="login-hide" title="${item.price}"><span class="price">${item.price}</span></td>
+      <td class="login-hide" title="${item.settleMode}">${item.settleMode}</td>
+      <td style="white-space:normal" title="${esc((item.tags||[]).join(', '))}">${tagsHtml}</td>
+      <td style="font-size:12px" title="${item.age}">${item.age}</td>
+      <td style="font-size:12px;color:#666" title="${item.createdAt}">${item.createdAt}</td>
+      <td class="login-hide" title="${esc(item.remark)}">${esc(item.remark) || '-'}</td>
+      <td title="${esc(item.detailUrl)}"><a href="${esc(item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
+      <td><img src="https://api.qrserver.com/v1/create-qr-code/?size=40x40&data=${encodeURIComponent(item.shareLink || item.detailUrl)}" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(this.src)" title="点击放大"></td>
+    </tr>`;
+  }).join('');
+}
+
+function setFilter(source, btn) {
+  currentSource = source;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function filterTable() {
+  renderTable();
+}
+
+function esc(s) { if (!s && s !== 0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+function setOrderUrls() {
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function fmtDate(d, end) {
+    return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + (end ? '+23%3A59%3A59' : '+00%3A00%3A00');
+  }
+  const now = new Date();
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+  const el1 = document.getElementById('orderKazhijia');
+  if (el1) {
+    el1.href = 'https://hk.ehaoka.com/admin/hkOrder/list?createdAt[]=' + startOfLastMonth.getTime() + '&createdAt[]=' + endOfToday.getTime() + '&page=1&pageSize=5&status=-1&orderRange=-1&sortKey=created_at&pageMode=List&isCounter=1';
+  }
+  const el2 = document.getElementById('order172');
+  if (el2) {
+    el2.href = 'https://haokaapi.lot-ml.com/api/Order/Query?page=1&limit=10&BeginTime=' + fmtDate(startOfLastMonth) + '&EndTime=' + fmtDate(endOfToday, true) + '&Name=&OrderNo=&Phone=&OrderStatus=&CardStatus=&BackMoneyType=&ProdID=&SecSupplier=&OnShop=&Operator=&IsSale=false&IsReimburseable=&OrderFlag=';
+  }
+}
+
+document.querySelector('.table-inner').addEventListener('scroll', function() {
+  document.getElementById('backToTop').style.display = this.scrollTop > 300 ? 'flex' : 'none';
+});
+
+// ---- Login ----
+function refreshData() {
+  fetch('/api/refresh').then(function(r){return r.json()}).then(function(d){
+    if (d.ok) { loadData(); }
+  });
+}
+function showQR(src) {
+  document.getElementById('qrBigImg').src = src.replace('size=40x40','size=400x400');
+  document.getElementById('qrModal').style.display = 'flex';
+}
+function doLogin() {
+  var pwd = document.getElementById('loginPwd').value;
+  fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pwd})})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      if (d.ok) {
+        localStorage.setItem('logged_in', '1');
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = '';
+      } else {
+        document.getElementById('loginErr').style.display = 'block';
+      }
+    });
+}
+function doLogout() {
+  localStorage.removeItem('logged_in');
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginPwd').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+}
+
+var isShare = location.pathname === '/share';
+if (isShare) {
+  document.getElementById('loginOverlay').style.display = 'none';
+} else if (localStorage.getItem('logged_in') === '1') {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = '';
+}
+
+loadData();
+setOrderUrls();
+</script>
+<div class="qr-modal" id="qrModal" onclick="this.style.display='none'"><img id="qrBigImg" src="" alt="二维码"></div>
+<button class="back-to-top" id="backToTop" onclick="document.querySelector('.table-inner').scrollTo({top:0,behavior:'smooth'})" title="返回顶部">↑</button>
+</body>
+</html>
