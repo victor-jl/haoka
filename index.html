@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>多平台商品数据汇总</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #2c3e50; }
@@ -26,14 +27,17 @@
   .filter-btn { padding: 5px 14px; border: 1px solid #ddd; border-radius: 16px; background: #fff; cursor: pointer; font-size: 12px; transition: all .2s; }
   .filter-btn.active { background: #5c6bc0; color: #fff; border-color: #5c6bc0; }
   .filter-btn:hover { border-color: #5c6bc0; }
+
   body.share-mode .header, body.share-mode .logout-btn { display: none !important; }
   body.share-mode .container { padding: 0; }
   body.share-mode .table-wrap { border-radius: 0; box-shadow: none; }
   body.share-mode .table-inner { max-height: 100vh; }
   body.share-mode .login-hide, body.share-mode .order-btn, body.share-mode .share-btn { display: none !important; }
   body:not(.admin-mode) .login-hide { display: none !important; }
+
   .order-btn { display: inline-flex; align-items: center; padding: 4px 10px; color: #fff; border-radius: 6px; font-size: 11px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: opacity .2s; }
   .order-btn:hover { opacity: .8; }
+
   .login-overlay { position: fixed; inset: 0; background: #f5f6fa; display: flex; align-items: center; justify-content: center; z-index: 9999; }
   .login-box { background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.1); text-align: center; width: 340px; }
   .login-box h2 { margin-bottom: 6px; font-size: 18px; }
@@ -43,20 +47,20 @@
   .login-box .login-btn { width: 100%; padding: 10px; background: #5c6bc0; color: #fff; border: none; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; }
   .login-box .login-btn:hover { background: #3f51b5; }
   .login-box .login-err { color: #ef5350; font-size: 12px; margin-top: 8px; display: none; }
-  .code-btn { padding: 7px 12px; border: 1px solid #5c6bc0; border-radius: 8px; background: #5c6bc0; color: #fff; font-size: 12px; cursor: pointer; white-space: nowrap; font-weight:600; }
-  .code-btn:disabled { background: #bbb; border-color: #bbb; cursor: not-allowed; }
+
   .logout-btn { display: inline-flex; align-items: center; padding: 4px 12px; background: transparent; color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.4); border-radius: 6px; font-size: 11px; cursor: pointer; margin-left: 14px; transition: all .2s; }
   .logout-btn:hover { background: rgba(255,255,255,.15); }
+
   .qr-modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 99999; cursor: pointer; }
   .qr-modal img { max-width: 90vw; max-height: 90vh; border-radius: 8px; }
+
   .order-btn.s1 { background: #5c6bc0; }
   .order-btn.s2 { background: #26a69a; }
   .order-btn.s3 { background: #ef5350; }
   .order-btn.s4 { background: #ff8f00; }
+
   .share-btn { display: inline-flex; align-items: center; padding: 4px 12px; background: #78909c; color: #fff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background .2s; }
   .share-btn:hover { background: #607d8b; }
-  .back-to-top { position: fixed; bottom: 30px; right: 30px; width: 44px; height: 44px; border-radius: 50%; background: #5c6bc0; color: #fff; border: none; font-size: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.25); display: none; align-items: center; justify-content: center; transition: all .2s; z-index: 999; }
-  .back-to-top:hover { background: #3f51b5; transform: translateY(-2px); }
 
   .table-wrap { overflow-x: auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
   .table-inner { max-height: calc(100vh - 180px); overflow-y: auto; }
@@ -82,26 +86,24 @@
   .price { color: #e65100; font-weight: 600; }
 
   .no-result { text-align: center; padding: 60px; color: #999; font-size: 14px; }
+
+  .update-time { font-size: 11px; color: #999; margin-left: 12px; }
 </style>
 </head>
 <body>
 
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
-    <h2>登录</h2>
-    <p>手机号验证码登录</p>
-    <input type="text" id="loginPhone" placeholder="手机号" maxlength="11" style="margin-bottom:8px" onkeydown="if(event.key==='Enter')document.getElementById('loginCode').focus()">
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <input type="text" id="loginCode" placeholder="验证码" maxlength="6" style="flex:1;margin-bottom:0" onkeydown="if(event.key==='Enter')doLogin()">
-      <button class="code-btn" id="sendCodeBtn" onclick="sendCode()">获取验证码</button>
-    </div>
-    <button class="login-btn" onclick="doLogin()">登录</button>
+    <h2>管理登录</h2>
+    <p>输入管理员密码查看完整信息</p>
+    <input type="password" id="adminPwd" placeholder="管理员密码" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    <button class="login-btn" onclick="doAdminLogin()">登录</button>
     <div class="login-err" id="loginErr"></div>
   </div>
 </div>
 
 <div class="header">
-  <h1>多平台商品数据汇总<span style="font-weight:400;font-size:12px;opacity:.7;margin-left:12px">四个接口返回数据合并展示</span><span id="serverAddr" style="font-weight:400;font-size:11px;opacity:.5;margin-left:12px"></span><button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none">退出登录</button></h1>
+  <h1>多平台商品数据汇总<span style="font-weight:400;font-size:12px;opacity:.7;margin-left:12px">多平台号卡商品聚合</span><span class="update-time" id="updateTime"></span><button class="logout-btn" id="logoutBtn" onclick="doLogout()" style="display:none">退出管理</button></h1>
 </div>
 
 <div class="container">
@@ -116,7 +118,7 @@
     </div>
     <div class="right">
       <input class="search-input" id="searchInput" placeholder="搜索商品名称..." oninput="filterTable()">
-      <button class="share-btn" onclick="refreshData()">刷新数据</button>
+      <button class="share-btn" onclick="loadData()">刷新数据</button>
       <button class="share-btn" onclick="window.open(location.origin+'/share','_blank')">分享</button>
       <a class="order-btn s1" id="orderKazhijia" href="javascript:void(0)" target="_blank">卡之家订单</a>
       <a class="order-btn s2" href="https://et.haomifi.com/admin/order/index" target="_blank">号易订单</a>
@@ -149,6 +151,15 @@
 </div>
 
 <script>
+// ===== Supabase 配置 =====
+const SUPABASE_URL = 'https://rnqrgmaeibwbfeqkjpky.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucXJnbWFlaWJ3YmZlcWtqcGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODQ0MjUsImV4cCI6MjEwMDU2MDQyNX0.QUDGuzcCwpPD2jH8sZ0Kd4wdNGcQKYXwj0EhfRveNME';
+// 管理员密码（部署前请修改为你自己的密码）
+const ADMIN_PASSWORD = 'haoka888';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ===== 状态 =====
 if (location.pathname === '/share') document.body.classList.add('share-mode');
 let allItems = [];
 let currentSource = 'all';
@@ -160,87 +171,58 @@ const sourceCls = {
   '政企校园卡': 's4',
 };
 
+// ===== 加载数据 =====
 async function loadData() {
-  fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>{
-    document.getElementById('serverAddr').innerHTML = '<a href="http://'+d.ip+':8899" target="_blank" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">'+d.ip+':8899</a>';
-  }).catch(()=>{
-    document.getElementById('serverAddr').innerHTML = '<a href="http://'+location.host+'" target="_blank" style="color:inherit;text-decoration:underline;text-decoration-style:dotted">'+location.host+'</a>';
-  });
   document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">加载中...</td></tr>';
-  const results = await Promise.allSettled([
-    fetch('/api/api1').then(r=>r.json()),
-    fetch('/api/api2').then(r=>r.json()),
-    fetch('/api/api3').then(r=>r.json()),
-    fetch('/api/api4').then(r=>r.json()),
-  ]);
-  const [d1, d2, d3, d4] = results.map(r => r.status === 'fulfilled' ? r.value : {error:true});
+  
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('source', { ascending: true });
 
-  const list1 = (d1?.data?.list || []).map(item => ({
-    source: '卡之家', sourceUrl: 'hk.ehaoka.com', sourceLoginUrl: 'https://hk.ehaoka.com/admin/', id: item.id,
+  if (error) {
+    document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">数据加载失败：' + esc(error.message) + '</td></tr>';
+    return;
+  }
+
+  allItems = (data || []).map(item => ({
+    source: item.source,
+    sourceUrl: item.source_url || '',
+    sourceLoginUrl: item.source_login_url || '',
+    id: item.id,
+    product_id: item.product_id || '',
     name: item.name || '',
-    detailUrl: 'https://www.ehaoka.cn/shop#/pages/goods/index?goodsId=' + item.id + '&promoCode=Y9iVicCA',
-    operator: ['','移动','联通','电信','广电'][item.operatorType] || item.operatorType || '',
-    commission: '¥' + (item.commission || 0),
-    price: item.price ? '¥' + item.price : '-',
-    settleMode: item.settleMode === 1 ? '一次性' : '次月返',
-    createdAt: item.createdAt || '',
-    tags: (item.tagsSelect || []).map(t => t.label),
-    age: (item.limitRule?.age || []).join('~') || '-',
-    shareLink: '',
-    remark: '',
-  }));
-
-  const list2 = (d2?.rows || []).map(item => ({
-    source: '号易', sourceUrl: 'et.haomifi.com', sourceLoginUrl: 'https://et.haomifi.com/admin/', id: item.id,
-    name: item.goods_name || '',
-    detailUrl: 'https://my.86hk.vip/#/pages/goods/details?goods_id=' + item.id + '&share_id=' + (item.agent_id || ''),
-    operator: '',
-    commission: '¥' + (item.agent_brokerage || 0),
-    price: '-',
-    settleMode: item.settlement_method === 2 ? '次月返' : '一次性',
-    createdAt: item.create_time || '',
-    tags: item.point_msg || [],
-    age: '-',
-    shareLink: item.out_url || '',
-    remark: item.point || '',
-  }));
-
-  const settleModeMap = {1:'月返', 2:'次月返', 3:'一次性', 4:'年返', 5:'季度返', 6:'半年返', 7:'一次性买断'};
-  const list3 = (d3?.data || []).map(item => ({
-    source: '172号卡', sourceUrl: 'haokaapi.lot-ml.com', sourceLoginUrl: 'https://haoka.lot-ml.com/', id: item.productID,
-    name: item.productName || '',
-    detailUrl: 'https://sztc.rimian666.cn/h5orderEn/index?pudID=' + (item.sn || '') + '&userid=' + (item.userSn || ''),
+    detailUrl: item.detail_url || '',
     operator: item.operator || '',
-    commission: item.sPriceRead || '-',
-    price: item.price ? '¥' + item.price : '-',
-    settleMode: settleModeMap[item.backMoneyType] || item.backMoneyType || '-',
-    createdAt: item.createTime || '',
-    tags: [item.areaRead || '', item.disableArea ? '禁发' + item.disableArea : ''].filter(Boolean),
-    age: (item.age1 || item.age2) ? (item.age1||'') + '~' + (item.age2||'') + '岁' : '-',
-    shareLink: '',
+    commission: item.commission || '-',
+    price: item.price || '-',
+    settleMode: item.settle_mode || '-',
+    createdAt: item.created_at || '',
+    tags: item.tags || [],
+    age: item.age || '-',
+    shareLink: item.share_link || '',
     remark: item.remark || '',
   }));
 
-  const list4 = (d4?.data || []).map(item => ({
-    source: '政企校园卡', sourceUrl: 'unionesim.com', sourceLoginUrl: 'https://unionesim.com/', id: item.id,
-    name: item.name || '',
-    detailUrl: item.public_product_url || 'https://unionesim.com/',
-    operator: item.yys || '',
-    commission: item.commission_display || '¥' + (item.actual_commission || 0),
-    price: item.yuezu_format || '-',
-    settleMode: item.js_type_text || '-',
-    createdAt: item.create_time || '',
-    tags: (item.tags || '').split(',').filter(Boolean),
-    age: item.age || '-',
-    shareLink: item.public_product_url || '',
-    remark: item.mark || '',
-  }));
-
-  allItems = [...list1, ...list2, ...list3, ...list4];
   document.getElementById('totalCount').textContent = allItems.length;
+  
+  // 显示更新时间
+  if (data && data.length > 0) {
+    const lastUpdated = data.reduce((latest, item) => {
+      return item.updated_at > latest ? item.updated_at : latest;
+    }, '');
+    if (lastUpdated) {
+      const d = new Date(lastUpdated);
+      document.getElementById('updateTime').textContent = '更新于 ' + 
+        d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' +
+        String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+  }
+
   renderTable();
 }
 
+// ===== 渲染表格 =====
 function renderTable() {
   const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
   const filtered = allItems.filter(item => {
@@ -289,12 +271,49 @@ function setFilter(source, btn) {
   renderTable();
 }
 
-function filterTable() {
-  renderTable();
-}
+function filterTable() { renderTable(); }
 
 function esc(s) { if (!s && s !== 0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
+// ===== 登录（密码验证） =====
+async function hashPassword(pwd) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pwd);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function doAdminLogin() {
+  const pwd = document.getElementById('adminPwd').value;
+  if (!pwd) {
+    document.getElementById('loginErr').textContent = '请输入密码';
+    document.getElementById('loginErr').style.display = 'block';
+    return;
+  }
+  const hash = await hashPassword(pwd);
+  const expectedHash = await hashPassword(ADMIN_PASSWORD);
+  if (hash === expectedHash) {
+    localStorage.setItem('admin_logged_in', '1');
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = '';
+    document.body.classList.add('admin-mode');
+  } else {
+    document.getElementById('loginErr').textContent = '密码错误';
+    document.getElementById('loginErr').style.display = 'block';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('admin_logged_in');
+  document.body.classList.remove('admin-mode');
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('adminPwd').value = '';
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('logoutBtn').style.display = 'none';
+}
+
+// ===== 订单链接 =====
 function setOrderUrls() {
   function pad(n) { return String(n).padStart(2, '0'); }
   function fmtDate(d, end) {
@@ -314,118 +333,25 @@ function setOrderUrls() {
   }
 }
 
-document.querySelector('.table-inner').addEventListener('scroll', function() {
-  document.getElementById('backToTop').style.display = this.scrollTop > 300 ? 'flex' : 'none';
-});
-
-// ---- Login (Phone Verification Code) ----
-var codeTimer = null;
-var codeCountdown = 0;
-
-function sendCode() {
-  var phone = document.getElementById('loginPhone').value.trim();
-  if (!/^1\d{10}$/.test(phone)) {
-    document.getElementById('loginErr').textContent = '请输入正确的手机号';
-    document.getElementById('loginErr').style.display = 'block';
-    return;
-  }
-  document.getElementById('loginErr').style.display = 'none';
-  document.getElementById('sendCodeBtn').disabled = true;
-  fetch('/api/send-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:phone})})
-    .then(function(r){return r.json()})
-    .then(function(d){
-      if (d.ok) {
-        codeCountdown = 60;
-        document.getElementById('sendCodeBtn').textContent = codeCountdown + 's';
-        if (codeTimer) clearInterval(codeTimer);
-        codeTimer = setInterval(function(){
-          codeCountdown--;
-          if (codeCountdown <= 0) {
-            clearInterval(codeTimer);
-            document.getElementById('sendCodeBtn').textContent = '重新获取';
-            document.getElementById('sendCodeBtn').disabled = false;
-          } else {
-            document.getElementById('sendCodeBtn').textContent = codeCountdown + 's';
-          }
-        }, 1000);
-      } else {
-        document.getElementById('loginErr').textContent = d.error || '发送失败';
-        document.getElementById('loginErr').style.display = 'block';
-        document.getElementById('sendCodeBtn').disabled = false;
-      }
-    });
-}
-
-function doLogin() {
-  var phone = document.getElementById('loginPhone').value.trim();
-  var code = document.getElementById('loginCode').value.trim();
-  if (!phone || !code) {
-    document.getElementById('loginErr').textContent = '请填写手机号和验证码';
-    document.getElementById('loginErr').style.display = 'block';
-    return;
-  }
-  fetch('/api/verify-code', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({phone:phone, code:code})})
-    .then(function(r){return r.json()})
-    .then(function(d){
-      if (d.ok) {
-        localStorage.setItem('token', d.token);
-        localStorage.setItem('is_admin', '1');
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('logoutBtn').style.display = '';
-        document.body.classList.add('admin-mode');
-      } else {
-        document.getElementById('loginErr').textContent = d.error || '验证失败';
-        document.getElementById('loginErr').style.display = 'block';
-      }
-    });
-}
-
-function doLogout() {
-  var token = localStorage.getItem('token');
-  if (token) {
-    fetch('/api/logout', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:token})});
-  }
-  localStorage.removeItem('token');
-  localStorage.removeItem('is_admin');
-  document.body.classList.remove('admin-mode');
-  document.getElementById('loginOverlay').style.display = 'flex';
-  document.getElementById('loginPhone').value = '';
-  document.getElementById('loginCode').value = '';
-  document.getElementById('loginErr').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'none';
-  if (codeTimer) clearInterval(codeTimer);
-  document.getElementById('sendCodeBtn').textContent = '获取验证码';
-  document.getElementById('sendCodeBtn').disabled = false;
-}
-
-function refreshData() {
-  fetch('/api/refresh').then(function(r){return r.json()}).then(function(d){
-    if (d.ok) { loadData(); }
-  });
-}
 function showQR(src) {
   document.getElementById('qrBigImg').src = src.replace('size=40x40','size=400x400');
   document.getElementById('qrModal').style.display = 'flex';
 }
 
+// ===== 初始化 =====
+document.querySelector('.table-inner').addEventListener('scroll', function() {
+  var btn = document.getElementById('backToTop');
+  if (btn) btn.style.display = this.scrollTop > 300 ? 'flex' : 'none';
+});
+
 var isShare = location.pathname === '/share';
 if (isShare) {
   document.getElementById('loginOverlay').style.display = 'none';
 } else {
-  var token = localStorage.getItem('token');
-  if (token) {
-    fetch('/api/check-session?token=' + encodeURIComponent(token))
-      .then(function(r){return r.json()})
-      .then(function(d){
-        if (d.ok && d.is_admin) {
-          document.getElementById('loginOverlay').style.display = 'none';
-          document.getElementById('logoutBtn').style.display = '';
-          document.body.classList.add('admin-mode');
-        } else {
-          localStorage.removeItem('token');
-          localStorage.removeItem('is_admin');
-        }
-      });
+  if (localStorage.getItem('admin_logged_in')) {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = '';
+    document.body.classList.add('admin-mode');
   }
 }
 
