@@ -257,6 +257,7 @@ async function loadData() {
   const { data, error } = await supaClient
     .from('products')
     .select('*')
+    .or('active.is.null,active.eq.true')
     .order('source', { ascending: true });
 
   if (error) {
@@ -654,17 +655,21 @@ async function doImport() {
     } else { it.qr_code = ''; }
   }
 
-  // 写入数据库（先删旧数据，再插入）
+  // 写入数据库（旧数据置为失效，再插入新数据）
   statusEl.textContent = '⏳ 正在写入数据库（已生成 ' + items.length + ' 个 QR 码）...';
   btn.textContent = '写入中...';
 
   try {
-    // 删除旧数据
-    var { error: delErr } = await supaClient
+    // 将该渠道旧数据置为失效
+    var { error: updErr } = await supaClient
       .from('products')
-      .delete()
-      .eq('source', source);
-    if (delErr) throw new Error('删除旧数据失败: ' + delErr.message);
+      .update({ active: false })
+      .eq('source', source)
+      .or('active.is.null,active.eq.true');
+    if (updErr) throw new Error('置旧数据为失效失败: ' + updErr.message);
+
+    // 新数据标记 active=true
+    for (var k = 0; k < items.length; k++) items[k].active = true;
 
     // 批量插入
     var batchSize = 500;

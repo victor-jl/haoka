@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS products (
   share_link TEXT,                       -- 分享链接
   claim_link TEXT,                       -- 领取链接（与 detail_url 相同，但直接存储）
   qr_code TEXT,                          -- 二维码 base64 data URL（导入时预生成）
+  active BOOLEAN DEFAULT true,           -- 是否有效；导入时旧数据置为 false
   remark TEXT,                           -- 备注
   updated_at TIMESTAMPTZ DEFAULT NOW()   -- 更新时间
 );
@@ -81,3 +82,4 @@ CREATE POLICY "允许公开读取配置"
 -- ============================================
 ALTER TABLE products ADD COLUMN IF NOT EXISTS claim_link TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS qr_code TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
