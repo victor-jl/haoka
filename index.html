@@ -320,7 +320,7 @@ function renderTable() {
       <td style="font-size:12px;color:#666" title="${esc(item.createdAt)}">${esc(item.createdAt)}</td>
       <td class="login-hide" title="${esc(item.remark)}">${esc(item.remark) || '-'}</td>
       <td title="${esc(item.detailUrl)}"><a href="${esc(item.claimLink || item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
-      <td>${item.qrCode ? '<img src="'+esc(item.qrCode)+'" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(\''+esc(item.claimLink || item.detailUrl)+'\')" title="点击放大">' : '-'}</td>
+      <td>${item.qrCode ? '<img src="'+esc(item.qrCode)+'" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(\''+esc(item.qrCode)+'\')" title="点击放大">' : '-'}</td>
     </tr>`;
   }).join('');
 }
@@ -441,14 +441,8 @@ function setOrderUrls() {
   }
 }
 
-function showQR(url) {
-  document.getElementById('qrBigImg').src = '';
-  if (typeof QRious !== 'undefined') {
-    var qr = new QRious({ value: url, size: 400 });
-    document.getElementById('qrBigImg').src = qr.toDataURL();
-  } else {
-    document.getElementById('qrBigImg').alt = '二维码: '+url;
-  }
+function showQR(dataUrl) {
+  document.getElementById('qrBigImg').src = dataUrl || '';
   document.getElementById('qrModal').style.display = 'flex';
 }
 
