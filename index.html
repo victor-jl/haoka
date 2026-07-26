@@ -43,6 +43,8 @@
   th { background: #f5f7ff; text-align: center; padding: 8px 10px; font-weight: 600; color: #37474f; border-bottom: 2px solid #e8eaf6; white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 11px; }
   td { padding: 7px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
   tr:active td { background: #eef0ff; }
+  /* 隐藏标签列，搜索仍支持标签匹配 */
+  th:nth-child(7), td:nth-child(7) { display: none; }
 
   .source-tag { display: inline-block; font-size: 9px; padding: 2px 7px; border-radius: 10px; color: #fff; font-weight: 600; }
   .source-tag.s1 { background: #5c6bc0; }
@@ -118,7 +120,6 @@
     th:nth-child(4), td:nth-child(4) { width: 10%; }  /* 佣金 */
     th:nth-child(5), td:nth-child(5) { width: 10%; }  /* 价格 */
     th:nth-child(6), td:nth-child(6) { width: 9%; }   /* 结算方式 */
-    th:nth-child(7), td:nth-child(7) { width: 13%; }  /* 标签 */
     th:nth-child(8), td:nth-child(8) { width: 7%; }   /* 年龄要求 */
     th:nth-child(9), td:nth-child(9) { display: none; } /* 创建时间 */
     th:nth-child(10), td:nth-child(10) { display: none; } /* 备注 */
