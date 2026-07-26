@@ -4,7 +4,7 @@
 适用于已有本地缓存的场景。
 
 使用方法：
-  1. 安装依赖：pip3 install requests
+  1. 安装依赖：pip3 install requests && pip3 install "qrcode[pil]"
   2. 修改变量 SUPABASE_SERVICE_KEY
   3. 运行：python3 import-local.py
 """
@@ -12,11 +12,27 @@
 import json
 import os
 import sys
+import base64
+import io
 import requests
+import qrcode
 
 # ===== Supabase 配置 =====
 SUPABASE_URL = "https://rnqrgmaeibwbfeqkjpky.supabase.co"
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+
+# ===== QR 码生成（导入时预生成，存 data URL）=====
+def make_qr_dataurl(url, size=200):
+    if not url:
+        return ""
+    try:
+        img = qrcode.make(url, box_size=max(1, size//25))
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        return f"data:image/png;base64,{b64}"
+    except Exception:
+        return ""
 
 # 本地缓存文件路径
 LOCAL_FILES = [
@@ -272,7 +288,12 @@ def main():
             continue
         
         items = parser(raw_data, meta)
-        print(f"  → 解析出 {len(items)} 条商品")
+        # 注入 claim_link 和 qr_code
+        for it in items:
+            url = it.get("detail_url", "") or it.get("share_link", "") or ""
+            it["claim_link"] = url
+            it["qr_code"] = make_qr_dataurl(url)
+        print(f"  → 解析出 {len(items)} 条商品，已预生成 QR 码")
         
         inserted = push_to_supabase(items, source_name)
         total_all += inserted

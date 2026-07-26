@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS products (
   age TEXT,                              -- 年龄要求
   created_at TEXT,                       -- 创建时间
   share_link TEXT,                       -- 分享链接
+  claim_link TEXT,                       -- 领取链接（与 detail_url 相同，但直接存储）
+  qr_code TEXT,                          -- 二维码 base64 data URL（导入时预生成）
   remark TEXT,                           -- 备注
   updated_at TIMESTAMPTZ DEFAULT NOW()   -- 更新时间
 );
@@ -55,7 +57,13 @@ CREATE TABLE IF NOT EXISTS app_config (
 
 ALTER TABLE app_config ENABLE ROW LEVEL SECURITY;
 
--- 允许公开读取（值已做 hash 处理，如密码是 SHA-256）
+-- 允许公开读取配置（值已做 hash 处理，如密码是 SHA-256）
 CREATE POLICY "允许公开读取配置"
   ON app_config FOR SELECT
   USING (true);
+
+-- ============================================
+-- 若已有表，追加新列（非破坏性迁移）
+-- ============================================
+ALTER TABLE products ADD COLUMN IF NOT EXISTS claim_link TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS qr_code TEXT;

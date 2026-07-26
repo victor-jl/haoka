@@ -3,7 +3,7 @@
 数据更新脚本 - 从各平台 API 拉取数据并推送到 Supabase
 
 使用方法：
-  1. 先安装依赖：pip3 install requests supabase
+  1. 先安装依赖：pip3 install requests && pip3 install "qrcode[pil]"
   2. 修改下面的 SUPABASE_URL 和 SUPABASE_SERVICE_KEY（在 Supabase Dashboard → Settings → API → service_role key）
   3. 修改 API_CONFIG 里的接口地址和参数
   4. 运行：python3 update-data.py
@@ -12,13 +12,29 @@
 import json
 import os
 import sys
+import base64
+import io
 import requests
+import qrcode
 
 # ===== 配置 =====
 
 # Supabase 配置（从 Settings → API 获取）
 SUPABASE_URL = "https://rnqrgmaeibwbfeqkjpky.supabase.co"
 SUPABASE_SERVICE_KEY = ""  # ← 请填写 service_role key（在 Settings → API 页面）
+
+# ===== QR 码生成（导入时预生成，存 data URL）=====
+def make_qr_dataurl(url, size=200):
+    if not url:
+        return ""
+    try:
+        img = qrcode.make(url, box_size=max(1, size//25))
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        return f"data:image/png;base64,{b64}"
+    except Exception:
+        return ""
 
 # API 接口配置（请根据实际情况修改）
 API_CONFIG = [
@@ -272,7 +288,11 @@ def main():
             continue
 
         items = parser(data)
-        print(f"  → 解析出 {len(items)} 条商品")
+        for it in items:
+            url = it.get("detail_url", "") or it.get("share_link", "") or ""
+            it["claim_link"] = url
+            it["qr_code"] = make_qr_dataurl(url)
+        print(f"  → 解析出 {len(items)} 条商品，已预生成 QR 码")
 
         total, inserted = push_to_supabase(items, api["name"])
         print(f"  → ✅ 已写入 {inserted}/{total} 条")

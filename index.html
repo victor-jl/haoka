@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>多平台商品数据汇总</title>
 <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f6fa; color: #2c3e50; overflow: hidden; height: 100vh; }
@@ -261,6 +260,8 @@ async function loadData() {
     tags: (() => { try { return typeof item.tags === 'string' ? JSON.parse(item.tags) : (item.tags || []); } catch(e) { return []; } })(),
     age: item.age || '-',
     shareLink: item.share_link || '',
+    claimLink: item.claim_link || '',
+    qrCode: item.qr_code || '',
     remark: item.remark || '',
   }));
 
@@ -318,11 +319,10 @@ function renderTable() {
       <td style="font-size:12px" title="${esc(item.age)}">${esc(item.age)}</td>
       <td style="font-size:12px;color:#666" title="${esc(item.createdAt)}">${esc(item.createdAt)}</td>
       <td class="login-hide" title="${esc(item.remark)}">${esc(item.remark) || '-'}</td>
-      <td title="${esc(item.detailUrl)}"><a href="${esc(item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
-      <td><canvas class="qr-canvas" data-url="${encodeURIComponent(item.shareLink || item.detailUrl)}" width="28" height="28" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(decodeURIComponent(this.dataset.url))" title="点击放大"></canvas></td>
+      <td title="${esc(item.detailUrl)}"><a href="${esc(item.claimLink || item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
+      <td>${item.qrCode ? '<img src="'+esc(item.qrCode)+'" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(\''+esc(item.claimLink || item.detailUrl)+'\')" title="点击放大">' : '-'}</td>
     </tr>`;
   }).join('');
-  renderQrCodes();
 }
 
 function setFilter(source, btn) {
@@ -443,24 +443,13 @@ function setOrderUrls() {
 
 function showQR(url) {
   document.getElementById('qrBigImg').src = '';
-  var qr = new QRious({ value: url, size: 400 });
-  document.getElementById('qrBigImg').src = qr.toDataURL();
+  if (typeof QRious !== 'undefined') {
+    var qr = new QRious({ value: url, size: 400 });
+    document.getElementById('qrBigImg').src = qr.toDataURL();
+  } else {
+    document.getElementById('qrBigImg').alt = '二维码: '+url;
+  }
   document.getElementById('qrModal').style.display = 'flex';
-}
-
-// 渲染二维码到 canvas（本地生成，不依赖第三方 API）
-function renderQrCodes() {
-  document.querySelectorAll('.qr-canvas').forEach(function(c) {
-    try {
-      var url = decodeURIComponent(c.dataset.url);
-      // 清除之前生成的 QR
-      c.getContext('2d').clearRect(0, 0, c.width, c.height);
-      var qr = new QRious({ value: url, size: 40 });
-      var img = new Image();
-      img.onload = function() { c.getContext('2d').drawImage(img, 0, 0, 28, 28); };
-      img.src = qr.toDataURL();
-    } catch(e) { /* ignore render errors */ }
-  });
 }
 
 // ===== 初始化 =====
