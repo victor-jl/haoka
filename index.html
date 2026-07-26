@@ -106,15 +106,33 @@
     .search-input:focus { width: 180px; }
     .top-links { gap: 3px; }
     .order-btn { font-size: 9px; padding: 2px 8px; }
-    th, td { padding: 5px 6px; font-size: 10px; }
-    table { min-width: 1100px; }
+
+    table { table-layout: fixed; }
+    th, td {
+      padding: 5px 2px; font-size: 10px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: keep-all;
+    }
+    th:nth-child(1), td:nth-child(1) { width: 11%; }  /* 来源 */
+    th:nth-child(2), td:nth-child(2) { width: 18%; }  /* 商品名称 */
+    th:nth-child(3), td:nth-child(3) { width: 7%; }   /* 运营商 */
+    th:nth-child(4), td:nth-child(4) { width: 10%; }  /* 佣金 */
+    th:nth-child(5), td:nth-child(5) { width: 10%; }  /* 价格 */
+    th:nth-child(6), td:nth-child(6) { width: 9%; }   /* 结算方式 */
+    th:nth-child(7), td:nth-child(7) { width: 13%; }  /* 标签 */
+    th:nth-child(8), td:nth-child(8) { width: 7%; }   /* 年龄要求 */
+    th:nth-child(9), td:nth-child(9) { display: none; } /* 创建时间 */
+    th:nth-child(10), td:nth-child(10) { display: none; } /* 备注 */
+    th:nth-child(11), td:nth-child(11) { width: 9%; }  /* 领取链接 */
+    th:nth-child(12), td:nth-child(12) { width: 6%; }  /* 扫码领取 */
   }
   @media (max-width: 480px) {
     .header h1 { font-size: 13px; }
     .search-input { width: 120px; font-size: 11px; }
     .search-input:focus { width: 150px; }
-    th, td { font-size: 9px; padding: 4px 5px; }
-    table { min-width: 1200px; }
+
+    th, td { font-size: 9px; padding: 4px 1px; }
+    th:nth-child(11), td:nth-child(11) { display: none; } /* 领取链接 */
+    th:nth-child(12), td:nth-child(12) { width: 9%; }     /* 扫码领取 */
   }
 </style>
 </head>
