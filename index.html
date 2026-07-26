@@ -45,7 +45,9 @@
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
   th { background: #f5f7ff; text-align: center; padding: 6px 4px; font-weight: 600; color: #37474f; border-bottom: 2px solid #e8eaf6; white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 11px; }
   td { padding: 5px 4px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
-  tr:active td { background: #eef0ff; }
+  tr:hover td { background: #f0f2ff; }
+  tr:active td { background: #dde0ff; }
+  tr.selected td { background: #e8eaff; box-shadow: inset 3px 0 0 #5c6bc0; }
   /* 隐藏标签列，搜索仍支持标签匹配 */
   th:nth-child(7), td:nth-child(7) { display: none; }
 
@@ -732,6 +734,14 @@ async function doImport() {
 document.getElementById('loginBtn').addEventListener('click', doAdminLogin);
 document.getElementById('adminPwd').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') doAdminLogin();
+});
+
+// 行点击高亮（非 PC 端点击选中行，便于识别定位）
+document.getElementById('tableBody').addEventListener('click', function(e) {
+  var tr = e.target.closest('tr');
+  if (!tr || !tr.parentNode) return;
+  this.querySelectorAll('tr.selected').forEach(function(r) { r.classList.remove('selected'); });
+  tr.classList.add('selected');
 });
 
 document.querySelector('.table-inner').addEventListener('scroll', function() {
