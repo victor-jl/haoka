@@ -43,6 +43,12 @@ CREATE POLICY "允许公开读取"
   ON products FOR SELECT
   USING (true);
 
+-- 允许匿名用户更新（前端页面更新 QR 码和链接）
+CREATE POLICY "允许公开更新"
+  ON products FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
 -- 只有持有 service_role key 的后台脚本才能写入
 -- （更新脚本里用 service_role key，不需要额外建 policy）
 
