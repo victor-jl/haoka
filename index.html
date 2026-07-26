@@ -215,7 +215,7 @@ try {
 }
 
 // ===== 状态 =====
-if (location.pathname === '/share') document.body.classList.add('share-mode');
+if (location.pathname.endsWith('/share')) document.body.classList.add('share-mode');
 let allItems = [];
 let currentSource = 'all';
 
@@ -456,7 +456,7 @@ document.querySelector('.table-inner').addEventListener('scroll', function() {
   if (btn) btn.style.display = this.scrollTop > 300 ? 'flex' : 'none';
 });
 
-var isShare = location.pathname === '/share';
+var isShare = location.pathname.endsWith('/share');
 if (isShare) {
   document.getElementById('loginOverlay').style.display = 'none';
 } else {
