@@ -8,10 +8,10 @@ import re
 import secrets
 import shlex
 import sqlite3
-import subprocess
 import time
 import urllib.parse
 import urllib.request
+import socket
 
 DB_PATH = '/tmp/product_data.db'
 API_FILES = [('api1', '/tmp/api1.json'), ('api2', '/tmp/api2.json'),
@@ -250,28 +250,35 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 elif not curl_cmd:
                     resp = {"ok": False, "error": "curl required"}
                 else:
-                    parts = shlex.split(curl_cmd)
-                    if not parts or os.path.basename(parts[0]) not in ('curl', 'curl.exe'):
-                        resp = {"ok": False, "error": "only curl command is allowed"}
-                    else:
-                        try:
-                            result = subprocess.run(parts, shell=False, capture_output=True, text=True, timeout=60)
-                            if result.returncode != 0:
-                                resp = {"ok": False, "error": "curl failed: " + (result.stderr or result.stdout)[:200]}
-                            else:
-                                data = json.loads(result.stdout)
-                                conn = sqlite3.connect(DB_PATH)
-                                conn.execute('INSERT OR REPLACE INTO api_cache (name, data, updated_at) VALUES (?,?,?)',
-                                             (name, json.dumps(data, ensure_ascii=False), int(time.time())))
-                                conn.commit()
-                                conn.close()
-                                resp = {"ok": True, "name": name}
-                        except json.JSONDecodeError:
-                            resp = {"ok": False, "error": "response not valid JSON"}
-                        except subprocess.TimeoutExpired:
-                            resp = {"ok": False, "error": "curl timeout (60s)"}
-                        except Exception as e:
-                            resp = {"ok": False, "error": str(e)[:200]}
+                    try:
+                        # 从 curl 命令中提取 URL，安全地使用 urllib 发送请求
+                        parts = shlex.split(curl_cmd)
+                        url = None
+                        for p in parts:
+                            if p.startswith('http://') or p.startswith('https://'):
+                                url = p
+                                break
+                        if not url:
+                            resp = {"ok": False, "error": "no HTTP URL found in curl command"}
+                        else:
+                            req = urllib.request.Request(url, headers={'User-Agent': 'haoka/1.0'})
+                            with urllib.request.urlopen(req, timeout=60) as f:
+                                raw = f.read().decode('utf-8')
+                            data = json.loads(raw)
+                            conn = sqlite3.connect(DB_PATH)
+                            conn.execute('INSERT OR REPLACE INTO api_cache (name, data, updated_at) VALUES (?,?,?)',
+                                         (name, json.dumps(data, ensure_ascii=False), int(time.time())))
+                            conn.commit()
+                            conn.close()
+                            resp = {"ok": True, "name": name}
+                    except json.JSONDecodeError:
+                        resp = {"ok": False, "error": "response not valid JSON"}
+                    except urllib.error.URLError as e:
+                        resp = {"ok": False, "error": "request failed: " + str(e.reason)[:200]}
+                    except socket.timeout:
+                        resp = {"ok": False, "error": "request timeout (60s)"}
+                    except Exception as e:
+                        resp = {"ok": False, "error": str(e)[:200]}
         else:
             self.send_response(404)
             self.send_header('Content-Type', 'application/json; charset=utf-8')
@@ -299,4 +306,4 @@ if __name__ == '__main__':
     print(f'Server running at http://localhost:{port}')
     print(f'Public: http://{public_ip}:{port}' if public_ip != 'unknown' else '')
     print(f'Data cached in {DB_PATH}')
-    http.server.HTTPServer(('0.0.0.0', port), Handler).serve_forever()
+    http.server.HTTPServer(('127.0.0.1', port), Handler).serve_forever()

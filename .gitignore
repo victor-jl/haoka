@@ -6,6 +6,9 @@
 .idea/
 .trae/
 
+# Agent workspaces
+.workbuddy/
+
 # Other project folders
 720/
 Snapzy/
