@@ -49,8 +49,16 @@ CREATE POLICY "允许公开更新"
   USING (true)
   WITH CHECK (true);
 
--- 只有持有 service_role key 的后台脚本才能写入
--- （更新脚本里用 service_role key，不需要额外建 policy）
+-- 允许匿名用户插入和删除（前端页面粘贴数据导入）
+CREATE POLICY "允许公开写入"
+  ON products FOR INSERT
+  WITH CHECK (true);
+CREATE POLICY "允许公开删除"
+  ON products FOR DELETE
+  USING (true);
+
+-- 同时，持有 service_role key 的后台脚本也可以写入
+-- （import-local.py / update-data.py 使用 service_role key）
 
 -- ============================================
 -- app_config 配置表（存储敏感信息，以 hash 形式）

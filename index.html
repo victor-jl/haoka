@@ -92,6 +92,23 @@
   .filter-sheet .sheet-btn:active { background: #e8eaf6; }
   .filter-sheet .sheet-btn.active-sheet { background: #e8eaf6; color: #5c6bc0; font-weight: 600; }
 
+  .import-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 9998; display: none; }
+  .import-overlay.show { display: block; }
+  .import-dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #fff; border-radius: 16px; z-index: 9999; padding: 20px 24px; width: 560px; max-width: 92%; max-height: 85vh; display: none; flex-direction: column; box-shadow: 0 8px 40px rgba(0,0,0,.15); }
+  .import-dialog.show { display: flex; }
+  .import-dialog h3 { font-size: 15px; margin-bottom: 12px; color: #333; }
+  .import-dialog select, .import-dialog textarea { width: 100%; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 10px; font-size: 13px; outline: none; font-family: inherit; }
+  .import-dialog select { padding: 10px 12px; background: #f5f6fa; }
+  .import-dialog textarea { padding: 10px; resize: vertical; min-height: 200px; background: #f5f6fa; line-height: 1.5; tab-size: 2; }
+  .import-dialog textarea:focus, .import-dialog select:focus { border-color: #5c6bc0; }
+  .import-dialog .import-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .import-dialog .import-actions button { padding: 9px 20px; border: none; border-radius: 10px; font-size: 13px; cursor: pointer; font-weight: 600; }
+  .import-dialog .import-actions .btn-primary { background: #5c6bc0; color: #fff; }
+  .import-dialog .import-actions .btn-primary:active { background: #3f51b5; }
+  .import-dialog .import-actions .btn-cancel { background: #f0f0f5; color: #555; }
+  .import-dialog .import-actions .btn-cancel:active { background: #ddd; }
+  .import-dialog .import-status { font-size: 12px; color: #666; margin-bottom: 10px; }
+
   .back-to-top { display: none; position: fixed; right: 16px; bottom: 80px; width: 40px; height: 40px; border-radius: 50%; background: #5c6bc0; color: #fff; border: none; font-size: 18px; cursor: pointer; box-shadow: 0 2px 10px rgba(92,107,192,.3); align-items: center; justify-content: center; z-index: 100; transition: all .2s; }
   .back-to-top:active { transform: scale(.9); }
 
@@ -167,6 +184,7 @@
       <div class="top-actions">
         <input class="search-input" id="searchInput" placeholder="搜索商品..." oninput="filterTable()">
         <button class="icon-btn login-hide" onclick="regenerateQR()" title="重新生成二维码" style="font-size:12px;width:auto;padding:0 10px;border-radius:16px;background:#5c6bc0;color:#fff">QR</button>
+        <button class="icon-btn login-hide" onclick="showImportDialog()" title="粘贴 curl 导入数据" style="font-size:12px;width:auto;padding:0 10px;border-radius:16px;background:#26a69a;color:#fff">📥</button>
         <button class="icon-btn" onclick="loadData()" title="刷新">⟳</button>
         <button class="icon-btn" onclick="showFilterMenu()" title="筛选">☰</button>
       </div>
@@ -495,6 +513,185 @@ async function regenerateQR() {
   alert('完成！成功更新 ' + success + ' 条，失败 ' + fail + ' 条');
 }
 
+// ===== 解析器（从 Python 移植，保持格式一致） =====
+const PARSERS = {
+  '卡之家': function(raw) {
+    const data = (raw && raw.data) || raw || {};
+    const list = data.list || data;
+    if (!Array.isArray(list)) return [];
+    const opMap = ['', '移动', '联通', '电信', '广电'];
+    return list.filter(function(it) { return it && typeof it === 'object'; }).map(function(it) {
+      return {
+        source: '卡之家', source_url: 'hk.ehaoka.com', source_login_url: 'https://hk.ehaoka.com/admin/',
+        product_id: String(it.id || ''),
+        name: String(it.name || ''),
+        detail_url: 'https://www.ehaoka.cn/shop#/pages/goods/index?goodsId=' + (it.id || '') + '&promoCode=Y9iVicCA',
+        operator: opMap[it.operatorType] || String(it.operatorType || ''),
+        commission: '¥' + (it.commission || 0),
+        price: it.price ? '¥' + it.price : '-',
+        settle_mode: it.settleMode === 1 ? '一次性' : '次月返',
+        created_at: it.createdAt || '',
+        tags: (it.tagsSelect || []).map(function(t) { return (t && t.label) || ''; }).filter(Boolean),
+        age: (function() { var a = ((it.limitRule || {}).age || []); return a.length ? a.join('~') : '-'; })(),
+        share_link: '', remark: '',
+      };
+    });
+  },
+  '号易': function(raw) {
+    var rows = (raw && raw.rows) || raw || [];
+    if (!Array.isArray(rows)) return [];
+    return rows.filter(function(it) { return it && typeof it === 'object'; }).map(function(it) {
+      return {
+        source: '号易', source_url: 'et.haomifi.com', source_login_url: 'https://et.haomifi.com/admin/',
+        product_id: String(it.id || ''),
+        name: String(it.goods_name || ''),
+        detail_url: 'https://my.86hk.vip/#/pages/goods/details?goods_id=' + (it.id || '') + '&share_id=' + (it.agent_id || ''),
+        operator: '',
+        commission: '¥' + (it.agent_brokerage || 0),
+        price: '-',
+        settle_mode: it.settlement_method === 2 ? '次月返' : '一次性',
+        created_at: it.create_time || '',
+        tags: (it.point_msg || []).slice(),
+        age: '-',
+        share_link: it.out_url || '',
+        remark: String(it.point || ''),
+      };
+    });
+  },
+  '172号卡': function(raw) {
+    var data = (raw && raw.data) || raw || [];
+    if (!Array.isArray(data)) return [];
+    var smap = {1:'月返', 2:'次月返', 3:'一次性', 4:'年返', 5:'季度返', 6:'半年返', 7:'一次性买断'};
+    return data.filter(function(it) { return it && typeof it === 'object'; }).map(function(it) {
+      var t = [(it.areaRead || '')];
+      if (it.disableArea) t.push('禁发' + it.disableArea);
+      t = t.filter(Boolean);
+      var age1 = it.age1 || '', age2 = it.age2 || '';
+      return {
+        source: '172号卡', source_url: 'haokaapi.lot-ml.com', source_login_url: 'https://haoka.lot-ml.com/',
+        product_id: String(it.productID || ''),
+        name: String(it.productName || ''),
+        detail_url: 'https://sztc.rimian666.cn/h5orderEn/index?pudID=' + (it.sn || '') + '&userid=' + (it.userSn || ''),
+        operator: it.operator || '',
+        commission: it.sPriceRead || '-',
+        price: it.price ? '¥' + it.price : '-',
+        settle_mode: smap[it.backMoneyType] || String(it.backMoneyType || '-'),
+        created_at: it.createTime || '',
+        tags: t,
+        age: (age1 || age2) ? age1 + '~' + age2 + '岁' : '-',
+        share_link: '', remark: it.remark || '',
+      };
+    });
+  },
+  '政企校园卡': function(raw) {
+    var data = (raw && raw.data) || raw || [];
+    if (!Array.isArray(data)) return [];
+    return data.filter(function(it) { return it && typeof it === 'object'; }).map(function(it) {
+      return {
+        source: '政企校园卡', source_url: 'unionesim.com', source_login_url: 'https://unionesim.com/',
+        product_id: String(it.id || ''),
+        name: String(it.name || ''),
+        detail_url: it.public_product_url || 'https://unionesim.com/',
+        operator: it.yys || '',
+        commission: it.commission_display || ('¥' + (it.actual_commission || 0)),
+        price: it.yuezu_format || '-',
+        settle_mode: it.js_type_text || '-',
+        created_at: it.create_time || '',
+        tags: (String(it.tags || '').split(',')).filter(Boolean),
+        age: it.age || '-',
+        share_link: it.public_product_url || '',
+        remark: it.mark || '',
+      };
+    });
+  },
+};
+
+function showImportDialog() {
+  document.getElementById('importOverlay').classList.add('show');
+  document.getElementById('importDialog').classList.add('show');
+  document.getElementById('importData').value = '';
+  document.getElementById('importStatus').textContent = '';
+}
+function hideImportDialog() {
+  document.getElementById('importOverlay').classList.remove('show');
+  document.getElementById('importDialog').classList.remove('show');
+}
+
+async function doImport() {
+  var source = document.getElementById('importSource').value;
+  var rawText = document.getElementById('importData').value.trim();
+  if (!rawText) { alert('请先粘贴 JSON 数据'); return; }
+
+  var statusEl = document.getElementById('importStatus');
+  var btn = document.getElementById('importBtn');
+  btn.disabled = true;
+  btn.textContent = '解析中...';
+
+  var raw;
+  try { raw = JSON.parse(rawText); } catch (e) {
+    statusEl.textContent = '❌ JSON 格式错误：' + e.message;
+    btn.disabled = false; btn.textContent = '解析并导入';
+    return;
+  }
+
+  var parser = PARSERS[source];
+  if (!parser) { alert('未知来源'); btn.disabled = false; btn.textContent = '解析并导入'; return; }
+
+  var items = parser(raw);
+  if (!items.length) { statusEl.textContent = '⚠️ 未解析出任何商品数据'; btn.disabled = false; btn.textContent = '解析并导入'; return; }
+
+  // 生成 QR 码
+  statusEl.textContent = '✅ 解析出 ' + items.length + ' 条，正在生成 QR 码...';
+  for (var i = 0; i < items.length; i++) {
+    var it = items[i];
+    var url = it.detail_url || it.share_link || '';
+    it.claim_link = url;
+    if (url) {
+      try {
+        var qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+        it.qr_code = qr.createDataURL(4, 4);
+      } catch (e) { it.qr_code = ''; }
+    } else { it.qr_code = ''; }
+  }
+
+  // 写入数据库（先删旧数据，再插入）
+  statusEl.textContent = '⏳ 正在写入数据库（已生成 ' + items.length + ' 个 QR 码）...';
+  btn.textContent = '写入中...';
+
+  try {
+    // 删除旧数据
+    var { error: delErr } = await supaClient
+      .from('products')
+      .delete()
+      .eq('source', source);
+    if (delErr) throw new Error('删除旧数据失败: ' + delErr.message);
+
+    // 批量插入
+    var batchSize = 500;
+    var inserted = 0;
+    for (var j = 0; j < items.length; j += batchSize) {
+      var batch = items.slice(j, j + batchSize);
+      var { error: insErr } = await supaClient
+        .from('products')
+        .insert(batch);
+      if (insErr) throw new Error('插入数据失败: ' + insErr.message);
+      inserted += batch.length;
+      statusEl.textContent = '⏳ 已写入 ' + inserted + '/' + items.length + ' 条...';
+    }
+
+    statusEl.textContent = '✅ 导入完成！共 ' + inserted + ' 条商品数据';
+    btn.textContent = '✅ 完成';
+    setTimeout(function() { btn.textContent = '解析并导入'; btn.disabled = false; }, 2000);
+
+    // 刷新页面数据
+    await loadData();
+  } catch (e) {
+    statusEl.textContent = '❌ ' + e.message;
+    btn.disabled = false;
+    btn.textContent = '解析并导入';
+  }
+}
+
 // ===== 初始化 =====
 // 登录按钮事件绑定（避免 onclick 全局函数依赖）
 document.getElementById('loginBtn').addEventListener('click', doAdminLogin);
@@ -545,6 +742,23 @@ setOrderUrls();
 </div>
 
 <div class="qr-modal" id="qrModal" onclick="this.style.display='none'"><img id="qrBigImg" src="" alt="二维码"></div>
+
+<div class="import-overlay" id="importOverlay" onclick="hideImportDialog()"></div>
+<div class="import-dialog" id="importDialog">
+  <h3>📥 粘贴数据导入</h3>
+  <select id="importSource">
+    <option value="卡之家">卡之家</option>
+    <option value="号易">号易</option>
+    <option value="172号卡">172号卡</option>
+    <option value="政企校园卡">政企校园卡</option>
+  </select>
+  <textarea id="importData" placeholder="把 curl 命令返回的 JSON 粘贴到这里...&#10;&#10;例如：&#10;curl https://api.example.com/products | python3 -m json.tool&#10;然后把输出的 JSON 全选复制粘贴到此处"></textarea>
+  <div class="import-status" id="importStatus"></div>
+  <div class="import-actions">
+    <button class="btn-cancel" onclick="hideImportDialog()">取消</button>
+    <button class="btn-primary" id="importBtn" onclick="doImport()">解析并导入</button>
+  </div>
+</div>
 <button class="back-to-top" id="backToTop" onclick="document.querySelector('.table-inner').scrollTo({top:0,behavior:'smooth'})" title="返回顶部">↑</button>
 </body>
 </html>
