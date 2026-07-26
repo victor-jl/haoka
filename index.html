@@ -43,8 +43,8 @@
   .table-wrap { flex: 1; overflow: hidden; background: #fff; }
   .table-inner { height: 100%; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { background: #f5f7ff; text-align: center; padding: 8px 10px; font-weight: 600; color: #37474f; border-bottom: 2px solid #e8eaf6; white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 11px; }
-  td { padding: 7px 10px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
+  th { background: #f5f7ff; text-align: center; padding: 6px 4px; font-weight: 600; color: #37474f; border-bottom: 2px solid #e8eaf6; white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 11px; }
+  td { padding: 5px 4px; border-bottom: 1px solid #f5f5f5; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; }
   tr:active td { background: #eef0ff; }
   /* 隐藏标签列，搜索仍支持标签匹配 */
   th:nth-child(7), td:nth-child(7) { display: none; }
@@ -130,6 +130,13 @@
   .login-box .login-btn:active { background: #3f51b5; }
   .login-box .login-err { color: #ef5350; font-size: 12px; margin-top: 10px; display: none; }
 
+  @media (max-width: 1024px) {
+    th { padding: 6px 3px; }
+    td { padding: 5px 3px; font-size: 11px; }
+    /* 平板：隐藏创建时间和备注 */
+    th:nth-child(9), td:nth-child(9) { display: none; }
+    th:nth-child(10), td:nth-child(10) { display: none; }
+  }
   @media (max-width: 768px) {
     .header-inner { padding: 6px 10px; }
     .header h1 { font-size: 14px; }
@@ -143,23 +150,20 @@
 
     table { table-layout: fixed; }
     th, td {
-      padding: 4px 1px; font-size: 9px; line-height: 1.3;
+      padding: 4px 2px; font-size: 10px; line-height: 1.3;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: keep-all;
     }
-    th { padding: 5px 1px; font-size: 9px; }
+    th { padding: 5px 2px; font-size: 10px; }
     /* 非管理员/分享模式：6列 */
-    th:nth-child(1), td:nth-child(1) { width: 13%; }  /* 来源 */
-    th:nth-child(2), td:nth-child(2) { width: 28%; }  /* 商品名称 */
-    th:nth-child(3), td:nth-child(3) { width: 9%; }   /* 运营商 */
-    th:nth-child(4), td:nth-child(4) { width: 10%; }  /* 佣金 */
-    th:nth-child(5), td:nth-child(5) { width: 10%; }  /* 价格 */
-    th:nth-child(6), td:nth-child(6) { width: 9%; }   /* 结算方式 */
-    th:nth-child(7), td:nth-child(7) { display: none; } /* 标签 */
-    th:nth-child(8), td:nth-child(8) { width: 10%; }  /* 年龄要求 */
-    th:nth-child(9), td:nth-child(9) { display: none; } /* 创建时间 */
-    th:nth-child(10), td:nth-child(10) { display: none; } /* 备注 */
-    th:nth-child(11), td:nth-child(11) { width: 20%; }  /* 领取链接 */
-    th:nth-child(12), td:nth-child(12) { width: 10%; }  /* 扫码领取 */
+    th:nth-child(1), td:nth-child(1) { width: 11%; }  /* 来源 */
+    th:nth-child(2), td:nth-child(2) { width: 24%; }  /* 商品名称 */
+    th:nth-child(3), td:nth-child(3) { width: 8%; }   /* 运营商 */
+    th:nth-child(4), td:nth-child(4) { width: 8%; }  /* 佣金 */
+    th:nth-child(5), td:nth-child(5) { width: 8%; }  /* 价格 */
+    th:nth-child(6), td:nth-child(6) { width: 8%; }   /* 结算方式 */
+    th:nth-child(8), td:nth-child(8) { width: 8%; }  /* 年龄要求 */
+    th:nth-child(11), td:nth-child(11) { width: 17%; }  /* 领取链接 */
+    th:nth-child(12), td:nth-child(12) { width: 8%; }  /* 扫码领取 */
   }
   @media (max-width: 480px) {
     .header h1 { font-size: 12px; }
@@ -168,8 +172,8 @@
     .filter-select { font-size: 9px; max-width: 75px; }
     .icon-btn { width: 28px; height: 28px; font-size: 14px; }
 
-    th, td { font-size: 8px; padding: 3px 1px; }
-    th { font-size: 8px; padding: 4px 1px; }
+    th, td { font-size: 9px; padding: 3px 1px; }
+    th { font-size: 9px; padding: 4px 1px; }
     /* 极小屏：缩短领取链接列 */
     th:nth-child(11), td:nth-child(11) { width: 16%; }
   }
@@ -230,18 +234,18 @@
     <div class="table-inner" id="tableInner">
       <table>
         <thead><tr>
-          <th style="width:80px">来源</th>
-          <th style="width:340px">商品名称</th>
-          <th style="width:60px">运营商</th>
-          <th class="login-hide" style="width:70px">佣金</th>
-          <th class="login-hide" style="width:80px">价格</th>
-          <th class="login-hide" style="width:80px">结算方式</th>
-          <th style="width:160px">标签</th>
-          <th style="width:90px">年龄要求</th>
-          <th style="width:90px">创建时间</th>
-          <th class="login-hide" style="width:160px">备注</th>
-          <th style="width:100px">领取链接</th>
-          <th style="width:60px">扫码领取</th>
+          <th style="width:60px">来源</th>
+          <th style="width:260px">商品名称</th>
+          <th style="width:45px">运营商</th>
+          <th class="login-hide" style="width:55px">佣金</th>
+          <th class="login-hide" style="width:60px">价格</th>
+          <th class="login-hide" style="width:60px">结算方式</th>
+          <th>标签</th>
+          <th style="width:70px">年龄要求</th>
+          <th style="width:70px">创建时间</th>
+          <th class="login-hide" style="width:120px">备注</th>
+          <th style="width:70px">领取链接</th>
+          <th style="width:50px">扫码领取</th>
         </tr></thead>
         <tbody id="tableBody"></tbody>
       </table>
