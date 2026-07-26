@@ -207,7 +207,7 @@ async function loadData() {
     price: item.price || '-',
     settleMode: item.settle_mode || '-',
     createdAt: item.created_at || '',
-    tags: item.tags || [],
+    tags: typeof item.tags === 'string' ? (JSON.parse(item.tags) || []) : (item.tags || []),
     age: item.age || '-',
     shareLink: item.share_link || '',
     remark: item.remark || '',
