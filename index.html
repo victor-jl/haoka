@@ -235,7 +235,7 @@ try {
 }
 
 // ===== 状态 =====
-if (location.pathname.endsWith('/share')) document.body.classList.add('share-mode');
+if (location.search.includes('share')) document.body.classList.add('share-mode');
 let allItems = [];
 let currentSource = 'all';
 
