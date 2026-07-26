@@ -122,6 +122,21 @@
   .login-btn-floating:active { transform: scale(.9); background: rgba(255,255,255,.3); }
   body.admin-mode .login-btn-floating { display: none; }
 
+  /* 微信环境拦截 */
+  body.wechat-block { overflow: hidden !important; }
+  body.wechat-block .wechat-overlay { display: flex !important; }
+  body.wechat-block #app { display: none !important; }
+  body.wechat-block .header { display: none !important; }
+  body.wechat-block .login-btn-floating { display: none !important; }
+  body.wechat-block .login-overlay { display: none !important; }
+  .wechat-overlay { display: none; position: fixed; inset: 0; background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); z-index: 99999; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 40px 24px; }
+  .wechat-overlay .wx-icon { font-size: 64px; margin-bottom: 20px; opacity: .6; }
+  .wechat-overlay h2 { color: #fff; font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+  .wechat-overlay p { color: rgba(255,255,255,.6); font-size: 14px; margin-bottom: 28px; line-height: 1.6; max-width: 300px; }
+  .wechat-overlay .wx-btn { display: inline-flex; align-items: center; gap: 6px; padding: 12px 32px; border: none; border-radius: 24px; background: rgba(255,255,255,.15); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .2s; border: 1px solid rgba(255,255,255,.1); }
+  .wechat-overlay .wx-btn:active { background: rgba(255,255,255,.25); transform: scale(.95); }
+  .wechat-overlay .wx-tip { color: rgba(255,255,255,.35); font-size: 11px; margin-top: 20px; }
+
   .login-overlay { display: none; }
   .login-overlay.show { display: flex; }
   .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 9999; align-items: center; justify-content: center; }
@@ -184,6 +199,16 @@
 </style>
 </head>
 <body>
+<script>if(/MicroMessenger/i.test(navigator.userAgent)){document.body.className='wechat-block'}</script>
+
+<div class="wechat-overlay">
+  <div class="wx-icon">🔒</div>
+  <h2>请在浏览器中打开</h2>
+  <p>当前页面暂不支持微信内置浏览器访问<br>请点击右上角「···」选择「在浏览器中打开」</p>
+  <a class="wx-btn" href="javascript:void(0)" onclick="copyUrl()">📋 复制链接</a>
+  <div class="wx-tip">复制链接后粘贴到 Safari / Chrome 等浏览器打开</div>
+</div>
+<script>function copyUrl(){try{navigator.clipboard.writeText(location.href).then(function(){document.querySelector('.wx-btn').textContent='✅ 已复制'})}catch(e){prompt('复制链接:',location.href)}}</script>
 
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
