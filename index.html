@@ -88,6 +88,61 @@
   .no-result { text-align: center; padding: 60px; color: #999; font-size: 14px; }
 
   .update-time { font-size: 11px; color: #999; margin-left: 12px; }
+
+  /* ===== H5 自适应 ===== */
+  @media (max-width: 768px) {
+    .header { padding: 12px 14px; }
+    .header h1 { font-size: 15px; }
+    .header p { font-size: 11px; }
+
+    .container { padding: 10px 10px; }
+
+    .top-bar { gap: 6px; }
+    .top-bar .left { gap: 4px; }
+    .top-bar .right { width: 100%; gap: 4px; flex-wrap: wrap; }
+
+    .total-badge { padding: 4px 10px; font-size: 11px; }
+    .total-badge strong { font-size: 13px; }
+
+    .search-input { width: 100%; font-size: 12px; padding: 6px 10px; }
+
+    .filter-btn { padding: 3px 10px; font-size: 11px; }
+
+    .order-btn { font-size: 10px; padding: 3px 7px; }
+
+    .share-btn { font-size: 10px; padding: 3px 8px; }
+
+    .login-box { width: 88%; padding: 28px 20px; }
+    .login-box h2 { font-size: 16px; }
+
+    .table-inner { max-height: calc(100vh - 140px); }
+    table { font-size: 11px; table-layout: auto; }
+    th, td { padding: 5px 6px; white-space: nowrap; }
+
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5),
+    th:nth-child(6), td:nth-child(6),
+    th:nth-child(8), td:nth-child(8),
+    th:nth-child(10), td:nth-child(10) {
+      display: none;
+    }
+
+    .tag { font-size: 9px; padding: 0 4px; }
+    .source-tag { font-size: 9px; padding: 1px 5px; }
+
+    .update-time { font-size: 10px; display: block; margin-left: 0; margin-top: 2px; }
+    .logout-btn { font-size: 10px; padding: 2px 8px; margin-left: 6px; }
+  }
+
+  @media (max-width: 480px) {
+    .header h1 { font-size: 13px; }
+    .top-bar .left { width: 100%; }
+
+    th:nth-child(9), td:nth-child(9),
+    th:nth-child(11), td:nth-child(11) {
+      display: none;
+    }
+  }
 </style>
 </head>
 <body>
