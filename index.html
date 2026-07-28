@@ -45,15 +45,16 @@
   .table-wrap { flex: 1; overflow: hidden; background: rgba(255,255,255,.65); backdrop-filter: blur(20px) saturate(1.2); -webkit-backdrop-filter: blur(20px) saturate(1.2); }
   .table-inner { height: 100%; overflow-y: auto; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  th { background: rgba(245,247,255,.9); text-align: center; padding: 6px 4px; font-weight: 600; color: #1a1a2e; border-bottom: 2px solid rgba(200,200,220,.5); white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 11px; }
-  td { padding: 5px 4px; border-bottom: 1px solid rgba(220,220,235,.3); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; background: transparent; color: #2c3e50; }
-  tr:hover td { background: rgba(240,242,255,.7); }
+  th { background: rgba(240,242,255,.92); text-align: center; padding: 8px 6px; font-weight: 600; color: #1a1a2e; border-bottom: 2px solid rgba(180,180,210,.55); white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 11px; letter-spacing: .3px; }
+  td { padding: 7px 6px; border-bottom: 1px solid rgba(200,200,220,.35); vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; background: transparent; color: #2c3e50; }
+  tr:nth-child(even) td { background: rgba(248,249,255,.45); }
+  tr:hover td { background: rgba(235,238,255,.65); }
   tr:active td { background: rgba(221,224,255,.7); }
-  tr.selected td { background: rgba(232,234,255,.7); box-shadow: inset 3px 0 0 #5c6bc0; }
+  tr.selected td { background: rgba(232,234,255,.75); box-shadow: inset 3px 0 0 #5c6bc0; }
   /* 隐藏标签列，搜索仍支持标签匹配 */
   th:nth-child(7), td:nth-child(7) { display: none; }
 
-  .source-tag { display: inline-block; font-size: 9px; padding: 2px 7px; border-radius: 10px; color: #fff; font-weight: 600; }
+  .source-tag { display: inline-block; font-size: 9px; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: 600; }
   .source-tag.s1 { background: #5c6bc0; }
   .source-tag.s2 { background: #26a69a; }
   .source-tag.s3 { background: #ef5350; }
@@ -64,8 +65,8 @@
   .tag.purple { background: #f3e5f5; color: #4a148c; }
   .tag.orange { background: #fff3e0; color: #bf360c; }
   .tag.teal { background: #e0f2f1; color: #004d40; }
-  .commission { color: #2e7d32; font-weight: 600; }
-  .price { color: #e65100; font-weight: 600; }
+  .commission { color: #1b5e20; font-weight: 700; background: rgba(232,245,233,.5); padding: 1px 6px; border-radius: 4px; display: inline-block; }
+  .price { color: #bf360c; font-weight: 700; background: rgba(255,243,224,.5); padding: 1px 6px; border-radius: 4px; display: inline-block; }
   .no-result { text-align: center; padding: 60px 20px; color: #555; font-size: 14px; }
 
   .bottom-bar { display: flex; background: rgba(255,255,255,.65); backdrop-filter: blur(20px) saturate(1.3); -webkit-backdrop-filter: blur(20px) saturate(1.3); border-top: 1px solid rgba(255,255,255,.25); padding-bottom: env(safe-area-inset-bottom, 0px); flex-shrink: 0; }
@@ -169,10 +170,10 @@
 
     table { table-layout: fixed; }
     th, td {
-      padding: 4px 2px; font-size: 10px; line-height: 1.3;
+      padding: 5px 2px; font-size: 10px; line-height: 1.4;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap; word-break: keep-all;
     }
-    th { padding: 5px 2px; font-size: 10px; }
+    th { padding: 6px 2px; font-size: 10px; letter-spacing: .2px; }
     /* 非管理员/分享模式：6列 */
     th:nth-child(1), td:nth-child(1) { width: 11%; }  /* 来源 */
     th:nth-child(2), td:nth-child(2) { width: 24%; }  /* 商品名称 */
@@ -191,8 +192,8 @@
     .filter-select { font-size: 9px; max-width: 75px; }
     .icon-btn { width: 28px; height: 28px; font-size: 14px; }
 
-    th, td { font-size: 9px; padding: 3px 1px; }
-    th { font-size: 9px; padding: 4px 1px; }
+    th, td { font-size: 9px; padding: 4px 1px; line-height: 1.3; }
+    th { font-size: 9px; padding: 5px 1px; }
     /* 极小屏：缩短领取链接列 */
     th:nth-child(11), td:nth-child(11) { width: 16%; }
   }
