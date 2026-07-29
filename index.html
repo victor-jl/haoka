@@ -303,6 +303,7 @@
     <button class="cat-btn" data-cat="all" onclick="onCategoryFilter('all')">📋 全部</button>
     <button class="cat-btn active" data-cat="sim" onclick="onCategoryFilter('sim')">📱 号卡</button>
     <button class="cat-btn" data-cat="broadband" onclick="onCategoryFilter('broadband')">🌐 宽带</button>
+    <button class="cat-btn" data-cat="mobilewifi" onclick="onCategoryFilter('mobilewifi')">📶 移动WiFi</button>
   </div>
 
   <div class="table-wrap">
@@ -350,8 +351,19 @@ let currentSource = 'all';
 let currentOperator = 'all';
 let currentCat = 'sim';
 
+function isMobileWifi(item) {
+  var kw = ['移动wifi','随身wifi','移动WiFi','随身WiFi','移动WIFI','随身WIFI'];
+  var name = (item.name || '');
+  if (kw.some(function(k) { return name.includes(k); })) return true;
+  if ((item.tags || []).some(function(t) { return kw.some(function(k) { return t.includes(k); }); })) return true;
+  return false;
+}
 function isBroadband(item) {
-  return (item.tags || []).some(function(t) { return t.includes('宽带'); });
+  if (isMobileWifi(item)) return false;
+  if (String(item.operator || '').trim() === '6') return true;
+  if ((item.tags || []).some(function(t) { return t.includes('宽带'); })) return true;
+  if ((item.name || '').includes('单宽')) return true;
+  return false;
 }
 let currentView = 'table'; // 'table' | 'card'
 let sourceUpdateTimes = {};
@@ -479,8 +491,9 @@ function getFilteredAndSortedItems() {
       const op = (item.operator || '-').trim();
       if (op !== currentOperator) return false;
     }
-    if (currentCat === 'sim' && isBroadband(item)) return false;
-    if (currentCat === 'broadband' && !isBroadband(item)) return false;
+    if (currentCat === 'sim' && (isBroadband(item) || isMobileWifi(item))) return false;
+    if (currentCat === 'broadband' && (!isBroadband(item) || isMobileWifi(item))) return false;
+    if (currentCat === 'mobilewifi' && !isMobileWifi(item)) return false;
     if (keyword) {
       const nameMatch = item.name.toLowerCase().includes(keyword);
       const tagsMatch = (item.tags || []).some(function(t) { return t.toLowerCase().includes(keyword); });
@@ -490,8 +503,8 @@ function getFilteredAndSortedItems() {
   });
   filtered.sort(function(a, b) {
     if (currentCat === 'all') {
-      var ga = isBroadband(a) ? 1 : 0;
-      var gb = isBroadband(b) ? 1 : 0;
+      var ga = isMobileWifi(a) ? 2 : isBroadband(a) ? 1 : 0;
+      var gb = isMobileWifi(b) ? 2 : isBroadband(b) ? 1 : 0;
       if (ga !== gb) return ga - gb;
     }
     var pa = parseFloat(String(a.price).replace(/[¥,]/g, '')) || 0;
