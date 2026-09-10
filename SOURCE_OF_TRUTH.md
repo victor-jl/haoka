@@ -18,7 +18,7 @@
 | 订单链接 | `index.html#setOrderUrls()` | 4 个平台各自的订单页 URL |
 | 数据库保活 | `index.html#keepAlive()` | 管理员模式「💓」按钮，执行一次轻量查询防止 Supabase 闲置暂停；优先走 RPC `get_now()`（函数定义见 `supabase-schema.sql` 末尾，需在 SQL Editor 手动创建一次），未创建时自动回退为 `products` 轻量查询 |
 | Supabase Project | `rnqrgmaeibwbfeqkjpky` | URL: https://rnqrgmaeibwbfeqkjpky.supabase.co |
-| 在线地址 | `import-local.py#L32-35` | 见 memory 日志 |
+| 在线地址 | GitHub Pages | https://victor-jl.github.io/haoka/ |
 | GitHub 仓库 | `https://github.com/victor-jl/haoka` | |
 
 ## 项目说明
@@ -35,8 +35,12 @@ haoka/
 
 ## 部署方式
 
-**当前**：CloudStudio 静态部署（纯前端 + Supabase）
-**可选**：GitHub Pages（需将仓库公开）
+**当前**：GitHub Pages — https://victor-jl.github.io/haoka/
+- 仓库已公开，Pages 源为 `main` 分支 + 根目录 `/`，push 后自动构建（约 1 分钟）
+- git remote 为 SSH：`git@github.com:victor-jl/haoka.git`（本机 `~/.ssh/id_ed25519` 已授权）
+- 注意：钥匙串里的 `github-pat` 是**只读** token，只能读 API，不能 push
+
+**历史**：CloudStudio 静态部署 https://d602fbfdcc27455190d527bbeed61754.app.codebuddy.work
 
 ## 维护规则
 
