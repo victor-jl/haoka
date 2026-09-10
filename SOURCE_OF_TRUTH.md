@@ -9,7 +9,7 @@
 | 项目定位 | 本文件 | 多平台商品数据汇总仪表盘 |
 | 前端代码 | `index.html` | 单页 HTML，直连 Supabase |
 | 数据库 | Supabase `products` 表 | 存储 4 个平台商品数据 |
-| 配置数据 | Supabase `app_config` 表 | 管理员密码 hash、手机号等 |
+| 配置数据 | Supabase `app_config` 表 | 历史遗留配置（原管理员密码 hash）；RLS 已收回匿名读，仅登录用户可读 |
 | 数据更新 | `import-local.py` | 从本地 /tmp/api*.json 导入 |
 | 数据更新（在线） | `update-data.py` | 配置 API 地址后直接从接口拉取 |
 | 建表 SQL | `supabase-schema.sql` | 含 products 和 app_config 表 |
@@ -18,7 +18,7 @@
 | 访客读取 | Postgres 视图 `products_public` | 只含非敏感列；管理员登录后读 `products` 全表 |
 | RLS 策略 | `.workbuddy/fix-auth-rls.sql` | anon 仅可读视图；写权限与全表读取仅 authenticated |
 | 订单链接 | `index.html#setOrderUrls()` | 4 个平台各自的订单页 URL |
-| 数据库保活 | `index.html#keepAlive()` | 管理员模式「💓」按钮，执行一次轻量查询防止 Supabase 闲置暂停；优先走 RPC `get_now()`（函数定义见 `supabase-schema.sql` 末尾，需在 SQL Editor 手动创建一次），未创建时自动回退为 `products` 轻量查询 |
+| 数据库保活 | `index.html#keepAlive()` | 管理员模式「💓」按钮，执行一次轻量查询防止 Supabase 闲置暂停；另有每 3 天 10:00 的定时自动化。走 RPC `get_now()`（**已于 2026-09-10 在 SQL Editor 创建**，返回服务器时间），异常时回退为 `products_public` 轻量查询 |
 | Supabase Project | `rnqrgmaeibwbfeqkjpky` | URL: https://rnqrgmaeibwbfeqkjpky.supabase.co |
 | 在线地址 | GitHub Pages | https://victor-jl.github.io/haoka/ |
 | GitHub 仓库 | `https://github.com/victor-jl/haoka` | |
@@ -50,4 +50,5 @@ haoka/
 - 修改管理员密码：在 Supabase Dashboard → Authentication → Users 中重置，不要再用 `app_config`。
 - 修改订单链接时更新 `index.html` 中的 `setOrderUrls()` 函数。
 - 更新数据：在本地跑 `python3 import-local.py`（需配置 SUPABASE_SERVICE_KEY 环境变量）。
-- 敏感信息（手机号、密码等）**不允许**硬编码在代码中，一律存入 `app_config` 表。
+- 敏感信息（手机号、密码等）**不允许**硬编码在代码中。管理员凭据走 Supabase Auth，业务配置存 `app_config`（仅登录用户可读）。
+- 涉及 `products` 表的新查询一律在 RLS 下评估：匿名只能读 `products_public` 视图，写操作必须登录后执行。
