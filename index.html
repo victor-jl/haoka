@@ -251,8 +251,9 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <h2>管理登录</h2>
-    <p>输入管理员密码查看完整信息</p>
-    <input type="password" id="adminPwd" placeholder="管理员密码">
+    <p>使用 Supabase 管理员账号登录，查看完整信息</p>
+    <input type="email" id="adminEmail" placeholder="管理员邮箱" autocomplete="username">
+    <input type="password" id="adminPwd" placeholder="密码" autocomplete="current-password">
     <button class="login-btn" id="loginBtn">登录</button>
     <div class="login-err" id="loginErr"></div>
   </div>
@@ -300,10 +301,10 @@
       </div>
     </div>
     <div class="top-links login-hide" id="topLinks">
-      <a class="order-btn s1" id="orderKazhijia" href="javascript:void(0)" target="_blank">卡之家订单</a>
-      <a class="order-btn s2" href="https://et.haomifi.com/admin/order/index" target="_blank">号易订单</a>
-      <a class="order-btn s3" id="order172" href="javascript:void(0)" target="_blank">172号卡订单</a>
-      <a class="order-btn s4" href="https://unionesim.com/agent/order/index" target="_blank">政企校园卡订单</a>
+      <a class="order-btn s1" id="orderKazhijia" href="javascript:void(0)" target="_blank" rel="noopener noreferrer">卡之家订单</a>
+      <a class="order-btn s2" href="https://et.haomifi.com/admin/order/index" target="_blank" rel="noopener noreferrer">号易订单</a>
+      <a class="order-btn s3" id="order172" href="javascript:void(0)" target="_blank" rel="noopener noreferrer">172号卡订单</a>
+      <a class="order-btn s4" href="https://unionesim.com/agent/order/index" target="_blank" rel="noopener noreferrer">政企校园卡订单</a>
     </div>
   </div>
 
@@ -342,8 +343,7 @@
 // ===== Supabase 配置 =====
 const SUPABASE_URL = 'https://rnqrgmaeibwbfeqkjpky.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJucXJnbWFlaWJ3YmZlcWtqcGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5ODQ0MjUsImV4cCI6MjEwMDU2MDQyNX0.QUDGuzcCwpPD2jH8sZ0Kd4wdNGcQKYXwj0EhfRveNME';
-// 管理员密码将从 Supabase 的 app_config 表中读取（密码以 hash 形式存储）
-let ADMIN_PASSWORD_HASH = '';
+// 管理员身份由 Supabase Auth 服务端会话决定（不再使用客户端密码校验）
 
 let supaClient = null;
 try {
@@ -392,11 +392,19 @@ async function loadData() {
     document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">数据库连接未就绪，请刷新页面重试</td></tr>';
     return;
   }
-  const { data, error } = await supaClient
-    .from('products')
-    .select('*')
-    .or('active.is.null,active.eq.true')
-    .order('source', { ascending: true });
+  // 管理员读全表（含佣金/价格），访客只读公开视图（不含敏感列）
+  const isAdmin = document.body.classList.contains('admin-mode');
+  const table = isAdmin ? 'products' : 'products_public';
+  let q = supaClient.from(table).select('*').order('source', { ascending: true });
+  if (isAdmin) q = q.or('active.is.null,active.eq.true');
+
+  let res = await q;
+  // 公开视图尚未创建时回退到原表，保证旧环境仍可用
+  if (res.error && !isAdmin) {
+    res = await supaClient.from('products').select('*')
+      .or('active.is.null,active.eq.true').order('source', { ascending: true });
+  }
+  const data = res.data, error = res.error;
 
   if (error) {
     document.getElementById('tableBody').innerHTML = '<tr><td colspan="12" class="no-result">数据加载失败：' + esc(error.message) + '</td></tr>';
@@ -476,8 +484,8 @@ function renderTable() {
       return `<span class="tag ${c}">${esc(t)}</span>`;
     }).join('');
     return `<tr>
-      <td class="login-hide" title="${esc(item.sourceUrl)}"><a href="${esc(item.sourceLoginUrl)}" target="_blank" style="text-decoration:none"><span class="source-tag ${cls}">${esc(item.source)}</span><span class="login-hide" style="font-size:10px;color:#999;margin-left:4px">${esc(item.sourceUrl)}</span></a></td>
-      <td title="${esc(item.name)}"><a href="${esc(item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none;font-weight:600">${esc(item.name)}</a></td>
+      <td class="login-hide" title="${esc(item.sourceUrl)}"><a href="${safeUrl(item.sourceLoginUrl)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none"><span class="source-tag ${cls}">${esc(item.source)}</span><span class="login-hide" style="font-size:10px;color:#999;margin-left:4px">${esc(item.sourceUrl)}</span></a></td>
+      <td title="${esc(item.name)}"><a href="${safeUrl(item.detailUrl)}" target="_blank" rel="noopener noreferrer" style="color:#5c6bc0;text-decoration:none;font-weight:600">${esc(item.name)}</a></td>
       <td title="${esc(item.operator)||'-'}">${esc(item.operator) || '-'}</td>
       <td class="login-hide" title="${esc(item.commission)}"><span class="commission">${esc(item.commission)}</span></td>
       <td class="login-hide" title="${esc(item.price)}"><span class="price">${esc(item.price)}</span></td>
@@ -486,8 +494,8 @@ function renderTable() {
       <td style="font-size:12px" title="${esc(item.age)}">${formatAge(item.age)}</td>
       <td style="font-size:12px;color:#666" title="${esc(item.createdAt)}">${esc(item.createdAt)}</td>
       <td class="login-hide" title="${esc(item.remark)}">${esc(item.remark) || '-'}</td>
-      <td title="${esc(item.detailUrl)}"><a href="${esc(item.claimLink || item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
-      <td>${item.qrCode ? '<img src="'+esc(item.qrCode)+'" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(\''+esc(item.qrCode)+'\')" title="点击放大">' : '-'}</td>
+      <td title="${esc(item.detailUrl)}"><a href="${safeUrl(item.claimLink || item.detailUrl)}" target="_blank" rel="noopener noreferrer" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
+      <td>${item.qrCode ? '<img src="'+safeImgSrc(item.qrCode)+'" style="width:28px;height:28px;cursor:pointer;border-radius:4px;vertical-align:middle" onclick="showQR(\''+esc(item.qrCode)+'\')" title="点击放大">' : '-'}</td>
     </tr>`;
   }).join('');
 }
@@ -539,11 +547,11 @@ function renderCards() {
       var c = (t||'').includes('全国') ? 'green' : (t||'').includes('仅发')||(t||'').includes('禁发') ? 'red' : (t||'').includes('长期') ? 'purple' : (t||'').includes('优惠') ? 'orange' : (t||'').includes('宽带') ? 'teal' : '';
       return '<span class="card-tag ' + c + '">' + esc(t) + '</span>';
     }).join('');
-    var qrHtml = item.qrCode ? '<a href="javascript:void(0)" onclick="showQR(\'' + esc(item.qrCode) + '\')" style="flex-shrink:0;display:block;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)"><img src="' + esc(item.qrCode) + '" style="width:76px;height:76px;display:block;background:#fff;padding:4px" alt="QR"></a>' : '';
+    var qrHtml = item.qrCode ? '<a href="javascript:void(0)" onclick="showQR(\'' + esc(item.qrCode) + '\')" style="flex-shrink:0;display:block;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)"><img src="' + safeImgSrc(item.qrCode) + '" style="width:76px;height:76px;display:block;background:#fff;padding:4px" alt="QR"></a>' : '';
     return '<div class="card-item">' +
       '<div style="display:flex;gap:12px;align-items:flex-start">' +
         '<div style="flex:1;min-width:0">' +
-          '<a class="card-name" href="' + esc(item.detailUrl) + '" target="_blank">' + esc(item.name) + '</a>' +
+          '<a class="card-name" href="' + safeUrl(item.detailUrl) + '" target="_blank" rel="noopener noreferrer">' + esc(item.name) + '</a>' +
           (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
           '<div class="card-meta">' +
             (item.operator ? '<span class="card-operator" style="margin-right:8px">' + esc(item.operator) + '</span>' : '') +
@@ -554,7 +562,7 @@ function renderCards() {
         qrHtml +
       '</div>' +
       '<div class="card-actions">' +
-        '<a class="card-action-link" href="' + esc(item.claimLink || item.detailUrl) + '" target="_blank">领取链接</a>' +
+        '<a class="card-action-link" href="' + safeUrl(item.claimLink || item.detailUrl) + '" target="_blank" rel="noopener noreferrer">领取链接</a>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -610,61 +618,72 @@ function onCategoryFilter(cat) {
 }
 
 function esc(s) { if (!s && s !== 0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+// 图片地址额外允许 data:image/（二维码是本地生成的 base64 data URL）
+function safeImgSrc(u) {
+  if (!u) return '';
+  if (/^data:image\//i.test(u)) return u;
+  return safeUrl(u);
+}
+// 只放行 http/https，阻断 javascript: / data: 等危险协议（防止存储型 XSS）
+function safeUrl(u) {
+  if (!u) return '#';
+  try {
+    var p = new URL(u, location.origin);
+    return (p.protocol === 'http:' || p.protocol === 'https:') ? p.href : '#';
+  } catch (e) { return '#'; }
+}
 function formatAge(a) {
   if (!a || a === '-' || a === '') return '-';
   var m = String(a).match(/(\d+)\s*[~\-]\s*(\d+)/);
   return m ? m[1] + '-' + m[2] + '岁' : '-';
 }
 
-// ===== 登录（密码验证，hash 从 Supabase 读取） =====
-async function hashPassword(pwd) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pwd);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+// ===== 管理员登录（Supabase Auth，服务端鉴权） =====
+function closeLoginModal() {
+  const el = document.getElementById('loginOverlay');
+  el.classList.remove('show');
+  el.style.display = 'none';
+  document.getElementById('adminPwd').value = '';
+  const em = document.getElementById('adminEmail');
+  if (em) em.value = '';
+  document.getElementById('loginErr').style.display = 'none';
 }
 
-async function fetchAdminConfig() {
-  // 从 Supabase 读取管理员配置（密码 hash 和手机号）
-  if (!supaClient) {
-    console.error('Supabase 未初始化，无法读取配置');
-    return;
-  }
-  const { data, error } = await supaClient
-    .from('app_config')
-    .select('key, value');
-  if (error) {
-    console.error('读取配置失败:', error);
-    return;
-  }
-  for (const row of data || []) {
-    if (row.key === 'admin_password_hash') ADMIN_PASSWORD_HASH = row.value;
-  }
+function setAdminMode(on) {
+  document.body.classList.toggle('admin-mode', !!on);
+  document.getElementById('logoutBtn').style.display = on ? '' : 'none';
 }
 
 async function doAdminLogin() {
+  const errEl = document.getElementById('loginErr');
+  const emEl = document.getElementById('adminEmail');
+  const email = (emEl ? emEl.value : '').trim();
   const pwd = document.getElementById('adminPwd').value;
-  if (!pwd) {
-    document.getElementById('loginErr').textContent = '请输入密码';
-    document.getElementById('loginErr').style.display = 'block';
+  if (!email || !pwd) {
+    errEl.textContent = '请输入邮箱和密码';
+    errEl.style.display = 'block';
     return;
   }
-  // 如果还没加载配置，先加载
-  if (!ADMIN_PASSWORD_HASH) {
-    await fetchAdminConfig();
+  if (!supaClient) {
+    errEl.textContent = '数据库连接未就绪，请刷新页面重试';
+    errEl.style.display = 'block';
+    return;
   }
-  const hash = await hashPassword(pwd);
-  if (hash === ADMIN_PASSWORD_HASH) {
-    localStorage.setItem('admin_logged_in', '1');
-    document.getElementById('loginOverlay').classList.remove('show');
-    document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('logoutBtn').style.display = '';
-    document.body.classList.add('admin-mode');
-  } else {
-    document.getElementById('loginErr').textContent = '密码错误';
-    document.getElementById('loginErr').style.display = 'block';
+  const btn = document.getElementById('loginBtn');
+  const orig = btn.textContent;
+  btn.textContent = '登录中...';
+  btn.disabled = true;
+  const res = await supaClient.auth.signInWithPassword({ email: email, password: pwd });
+  btn.textContent = orig;
+  btn.disabled = false;
+  if (res.error) {
+    errEl.textContent = '登录失败：' + res.error.message;
+    errEl.style.display = 'block';
+    return;
   }
+  closeLoginModal();
+  setAdminMode(true);
+  await loadData();
 }
 
 function showLoginModal() {
@@ -672,18 +691,16 @@ function showLoginModal() {
   el.classList.add('show');
   el.style.display = 'flex';
   document.getElementById('adminPwd').value = '';
-  document.getElementById('adminPwd').focus();
   document.getElementById('loginErr').style.display = 'none';
+  const em = document.getElementById('adminEmail');
+  if (em && !em.value) em.focus(); else document.getElementById('adminPwd').focus();
 }
 
-function doLogout() {
-  localStorage.removeItem('admin_logged_in');
-  document.body.classList.remove('admin-mode');
-  document.getElementById('loginOverlay').classList.remove('show');
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('adminPwd').value = '';
-  document.getElementById('loginErr').style.display = 'none';
-  document.getElementById('logoutBtn').style.display = 'none';
+async function doLogout() {
+  if (supaClient) await supaClient.auth.signOut();
+  setAdminMode(false);
+  closeLoginModal();
+  await loadData();
 }
 
 // ===== 订单链接 =====
@@ -795,7 +812,8 @@ async function keepAlive() {
     } catch (e) {
       fallback = true;
       try {
-        var r2 = await supaClient.from('products').select('id').limit(1);
+        // 用公开视图做保活：收紧 RLS 后匿名已无法直读 products
+        var r2 = await supaClient.from('products_public').select('id').limit(1);
         if (r2.error) throw r2.error;
       } catch (e2) {
         err = e2.message || String(e2);
@@ -1027,17 +1045,27 @@ document.querySelector('.table-inner').addEventListener('scroll', function() {
 });
 
 var isShare = location.search.includes('share');
-if (isShare) {
-  document.body.classList.add('share-mode');
-} else if (localStorage.getItem('admin_logged_in')) {
-  document.getElementById('logoutBtn').style.display = '';
-  document.body.classList.add('admin-mode');
-}
-// 预加载管理员配置（非强制，后续登录时若未加载会自动加载）
-fetchAdminConfig();
+if (isShare) document.body.classList.add('share-mode');
 
-loadData();
 setOrderUrls();
+
+// 管理员态完全由 Supabase 服务端会话决定，不再信任 localStorage
+if (supaClient && !isShare) {
+  supaClient.auth.getSession().then(function(r) {
+    var s = (r && r.data && r.data.session) || null;
+    setAdminMode(!!s);
+    loadData();
+  }).catch(function() { loadData(); });
+  supaClient.auth.onAuthStateChange(function(event) {
+    if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return;
+    var signedIn = (event === 'SIGNED_IN');
+    if (signedIn === document.body.classList.contains('admin-mode')) return;
+    setAdminMode(signedIn);
+    loadData();
+  });
+} else {
+  loadData();
+}
 </script>
 
 </div><!-- end app -->

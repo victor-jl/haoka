@@ -13,8 +13,10 @@
 | 数据更新 | `import-local.py` | 从本地 /tmp/api*.json 导入 |
 | 数据更新（在线） | `update-data.py` | 配置 API 地址后直接从接口拉取 |
 | 建表 SQL | `supabase-schema.sql` | 含 products 和 app_config 表 |
-| 权限控制 | `index.html` Supabase 配置 | SHA-256 密码验证，hash 存在 DB |
-| 管理员密码 | `app_config` 表 → `admin_password_hash` | SHA-256 哈希存储在数据库 |
+| 权限控制 | `index.html#doAdminLogin()` | Supabase Auth 服务端会话鉴权（邮箱+密码），不再使用客户端校验 |
+| 管理员账号 | Supabase Auth → Users | 在 Dashboard 的 Authentication → Users 中创建 |
+| 访客读取 | Postgres 视图 `products_public` | 只含非敏感列；管理员登录后读 `products` 全表 |
+| RLS 策略 | `.workbuddy/fix-auth-rls.sql` | anon 仅可读视图；写权限与全表读取仅 authenticated |
 | 订单链接 | `index.html#setOrderUrls()` | 4 个平台各自的订单页 URL |
 | 数据库保活 | `index.html#keepAlive()` | 管理员模式「💓」按钮，执行一次轻量查询防止 Supabase 闲置暂停；优先走 RPC `get_now()`（函数定义见 `supabase-schema.sql` 末尾，需在 SQL Editor 手动创建一次），未创建时自动回退为 `products` 轻量查询 |
 | Supabase Project | `rnqrgmaeibwbfeqkjpky` | URL: https://rnqrgmaeibwbfeqkjpky.supabase.co |
@@ -45,7 +47,7 @@ haoka/
 ## 维护规则
 
 - 新增数据源时修改 `import-local.py` 和 `update-data.py` 的解析函数。
-- 修改管理员密码：在 Supabase `app_config` 表中更新 `admin_password_hash`（SHA-256）。
+- 修改管理员密码：在 Supabase Dashboard → Authentication → Users 中重置，不要再用 `app_config`。
 - 修改订单链接时更新 `index.html` 中的 `setOrderUrls()` 函数。
 - 更新数据：在本地跑 `python3 import-local.py`（需配置 SUPABASE_SERVICE_KEY 环境变量）。
 - 敏感信息（手机号、密码等）**不允许**硬编码在代码中，一律存入 `app_config` 表。
