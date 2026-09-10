@@ -30,6 +30,10 @@
   .search-input:focus { border-color: #5c6bc0; background: #fff; width: 240px; box-shadow: 0 0 0 2px rgba(92,107,192,.1); }
   .icon-btn { width: 32px; height: 32px; border: 1px solid #c5cae9; border-radius: 50%; background: #f8f9ff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #5c6bc0; transition: all .15s; flex-shrink: 0; }
   .icon-btn:active { background: #eef0ff; transform: scale(.92); }
+  .icon-btn:disabled { opacity: .6; cursor: default; }
+  .toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%) translateY(12px); max-width: 90vw; background: #37474f; color: #fff; font-size: 13px; line-height: 1.5; padding: 10px 18px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 9999; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: #e53935; }
   .filter-select { padding: 6px 10px; border: 1px solid #c5cae9; border-radius: 16px; font-size: 12px; background: #f8f9ff; color: #37474f; outline: none; cursor: pointer; flex-shrink: 0; max-width: 120px; appearance: auto; }
   .filter-select:focus { border-color: #5c6bc0; box-shadow: 0 0 0 2px rgba(92,107,192,.1); }
   .filter-select option { background: #fff; color: #37474f; }
@@ -51,13 +55,16 @@
   .table-inner { height: 100%; overflow-y: auto; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 12px; }
   th { background: linear-gradient(135deg,#5c6bc0,#3949ab); text-align: center; padding: 9px 6px; font-weight: 600; color: #fff; border-bottom: none; white-space: nowrap; position: sticky; top: 0; z-index: 2; font-size: 11px; letter-spacing: .5px; }
-  td { padding: 7px 6px; border-bottom: 1px solid #e8eaf6; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; background: #fff; color: #37474f; }
+  td { padding: 7px 1px; border-bottom: 1px solid #e8eaf6; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; background: #fff; color: #37474f; }
+  td:nth-child(3) { text-align: left; }
   tr:nth-child(even) td { background: #fafaff; }
   tr:hover td { background: #eef0ff; }
   tr:active td { background: #e3e5ff; }
   tr.selected td { background: #e8eaff; box-shadow: inset 3px 0 0 #5c6bc0; }
   /* 隐藏标签列，搜索仍支持标签匹配 */
   th:nth-child(7), td:nth-child(7) { display: none; }
+  td:nth-child(2) { text-align: left; padding-left: 8px; padding-right: 1px; width: 160px; }
+  th:nth-child(2) { text-align: left; padding-left: 8px; }
 
   .source-tag { display: inline-block; font-size: 9px; padding: 2px 8px; border-radius: 10px; color: #fff; font-weight: 600; }
   .source-tag.s1 { background: #5c6bc0; }
@@ -204,7 +211,7 @@
     th { padding: 6px 2px; font-size: 10px; letter-spacing: .2px; }
     /* 非管理员/分享模式：6列 */
     th:nth-child(1), td:nth-child(1) { width: 11%; }  /* 来源 */
-    th:nth-child(2), td:nth-child(2) { width: 24%; }  /* 商品名称 */
+    th:nth-child(2), td:nth-child(2) { width: 30%; }  /* 商品名称 */
     th:nth-child(3), td:nth-child(3) { width: 8%; }   /* 运营商 */
     th:nth-child(4), td:nth-child(4) { width: 8%; }  /* 佣金 */
     th:nth-child(5), td:nth-child(5) { width: 8%; }  /* 价格 */
@@ -273,6 +280,7 @@
         <button class="icon-btn login-hide" onclick="regenerateQR()" title="重新生成二维码" style="font-size:12px;width:auto;padding:0 10px;border-radius:16px;background:#5c6bc0;color:#fff">QR</button>
         <button class="icon-btn" id="viewToggle" onclick="toggleView()" title="切换视图" style="font-size:12px;width:auto;padding:0 10px;border-radius:16px;background:rgba(255,255,255,.2);color:#fff">📋 表格</button>
         <button class="icon-btn login-hide" onclick="showImportDialog()" title="粘贴 curl 导入数据" style="font-size:12px;width:auto;padding:0 10px;border-radius:16px;background:#26a69a;color:#fff">📥</button>
+        <button class="icon-btn login-hide" onclick="keepAlive()" title="数据库保活：执行一次查询（等价于 SQL 编辑器跑 select now();），防止 Supabase 因闲置被暂停" style="font-size:12px;width:auto;padding:0 10px;border-radius:16px;background:#ff7043;color:#fff">💓</button>
         <button class="icon-btn" onclick="loadData()" title="刷新">⟳</button>
         <select class="filter-select" id="filterSelect" onchange="onFilterSelect(this.value)">
           <option value="all">📋 全部渠道</option>
@@ -311,7 +319,7 @@
       <table>
         <thead><tr>
           <th class="login-hide" style="width:60px">来源</th>
-          <th style="width:260px">商品名称</th>
+          <th style="width:160px">商品名称</th>
           <th style="width:45px">运营商</th>
           <th class="login-hide" style="width:55px">佣金</th>
           <th class="login-hide" style="width:60px">价格</th>
@@ -362,7 +370,8 @@ function isBroadband(item) {
   if (isMobileWifi(item)) return false;
   if (String(item.operator || '').trim() === '6') return true;
   if ((item.tags || []).some(function(t) { return t.includes('宽带'); })) return true;
-  if ((item.name || '').includes('单宽')) return true;
+  var n = (item.name || '');
+  if (n.includes('宽带') || n.includes('宽') || n.includes('融合')) return true;
   return false;
 }
 let currentView = 'table'; // 'table' | 'card'
@@ -474,7 +483,7 @@ function renderTable() {
       <td class="login-hide" title="${esc(item.price)}"><span class="price">${esc(item.price)}</span></td>
       <td class="login-hide" title="${esc(item.settleMode)}">${esc(item.settleMode)}</td>
       <td style="white-space:normal" title="${esc((item.tags||[]).join(', '))}">${tagsHtml}</td>
-      <td style="font-size:12px" title="${esc(item.age)}">${esc(item.age)}</td>
+      <td style="font-size:12px" title="${esc(item.age)}">${formatAge(item.age)}</td>
       <td style="font-size:12px;color:#666" title="${esc(item.createdAt)}">${esc(item.createdAt)}</td>
       <td class="login-hide" title="${esc(item.remark)}">${esc(item.remark) || '-'}</td>
       <td title="${esc(item.detailUrl)}"><a href="${esc(item.claimLink || item.detailUrl)}" target="_blank" style="color:#5c6bc0;text-decoration:none">领取链接</a></td>
@@ -503,10 +512,13 @@ function getFilteredAndSortedItems() {
   });
   filtered.sort(function(a, b) {
     if (currentCat === 'all') {
-      var ga = isMobileWifi(a) ? 2 : isBroadband(a) ? 1 : 0;
-      var gb = isMobileWifi(b) ? 2 : isBroadband(b) ? 1 : 0;
+      var ga = isBroadband(a) ? 2 : isMobileWifi(a) ? 1 : 0;
+      var gb = isBroadband(b) ? 2 : isMobileWifi(b) ? 1 : 0;
       if (ga !== gb) return ga - gb;
     }
+    var ca = parseFloat(String(a.commission).replace(/[¥,]/g, '')) || 0;
+    var cb = parseFloat(String(b.commission).replace(/[¥,]/g, '')) || 0;
+    if (ca !== cb) return cb - ca;
     var pa = parseFloat(String(a.price).replace(/[¥,]/g, '')) || 0;
     var pb = parseFloat(String(b.price).replace(/[¥,]/g, '')) || 0;
     return pb - pa;
@@ -535,7 +547,7 @@ function renderCards() {
           (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
           '<div class="card-meta">' +
             (item.operator ? '<span class="card-operator" style="margin-right:8px">' + esc(item.operator) + '</span>' : '') +
-            '<span>年龄: ' + esc(item.age) + '</span>' +
+            '<span>年龄: ' + formatAge(item.age) + '</span>' +
             (item.remark ? '<span style="margin-left:8px;color:#bbb">|</span> <span>' + esc(item.remark) + '</span>' : '') +
           '</div>' +
         '</div>' +
@@ -598,6 +610,11 @@ function onCategoryFilter(cat) {
 }
 
 function esc(s) { if (!s && s !== 0) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+function formatAge(a) {
+  if (!a || a === '-' || a === '') return '-';
+  var m = String(a).match(/(\d+)\s*[~\-]\s*(\d+)/);
+  return m ? m[1] + '-' + m[2] + '岁' : '-';
+}
 
 // ===== 登录（密码验证，hash 从 Supabase 读取） =====
 async function hashPassword(pwd) {
@@ -741,6 +758,71 @@ async function regenerateQR() {
   alert('完成！成功更新 ' + success + ' 条，失败 ' + fail + ' 条');
 }
 
+// ===== 轻量提示条 =====
+function showToast(msg, isErr) {
+  var el = document.getElementById('toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(function() { el.className = 'toast'; }, 3600);
+}
+
+// ===== 数据库保活 =====
+// 等价于在 Supabase SQL 编辑器里执行一次 select now();
+// 优先走 RPC get_now()（需在 SQL 编辑器建一次函数，见 supabase-schema.sql 末尾），
+// 没建也能用：回退成一次极轻量查询，同样产生项目活动。
+async function keepAlive() {
+  var btn = document.querySelector('[onclick="keepAlive()"]');
+  var orig = btn.textContent;
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var serverTime = null, err = null, fallback = false;
+
+  if (!supaClient) {
+    err = 'Supabase 未初始化';
+  } else {
+    try {
+      var r = await supaClient.rpc('get_now');
+      if (r.error) throw r.error;
+      serverTime = r.data;
+    } catch (e) {
+      fallback = true;
+      try {
+        var r2 = await supaClient.from('products').select('id').limit(1);
+        if (r2.error) throw r2.error;
+      } catch (e2) {
+        err = e2.message || String(e2);
+      }
+    }
+  }
+
+  var t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+  var ms = Math.round(t1 - t0);
+
+  btn.disabled = false;
+  btn.textContent = err ? '❌' : '✅';
+  setTimeout(function() { btn.textContent = orig; }, 2000);
+
+  if (err) {
+    showToast('保活失败：' + err, true);
+    return;
+  }
+  if (serverTime) {
+    var d = new Date(serverTime);
+    var stamp = isNaN(d.getTime()) ? String(serverTime) : d.toLocaleString('zh-CN');
+    showToast('数据库已唤醒 · 服务器时间 ' + stamp + ' · 耗时 ' + ms + 'ms');
+  } else {
+    showToast('数据库已唤醒（轻量查询）· 耗时 ' + ms + 'ms' + (fallback ? ' · 未启用 get_now()，可到 SQL 编辑器创建以获得服务器时间' : ''));
+  }
+}
+
 // ===== 解析器（从 Python 移植，保持格式一致） =====
 const PARSERS = {
   '卡之家': function(raw) {
@@ -796,7 +878,7 @@ const PARSERS = {
       t = t.filter(Boolean);
       var age1 = it.age1 || '', age2 = it.age2 || '';
       return {
-        source: '172号卡', source_url: 'haokaapi.lot-ml.com', source_login_url: 'https://haoka.lot-ml.com/',
+        source: '172号卡', source_url: 'haokaapi.lot-ml.com', source_login_url: 'https://haoka.lot-ml.com/login.html',
         product_id: String(it.productID || ''),
         name: String(it.productName || ''),
         detail_url: 'https://sztc.rimian666.cn/h5orderEn/index?pudID=' + (it.sn || '') + '&userid=' + (it.userSn || ''),

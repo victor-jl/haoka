@@ -83,3 +83,16 @@ CREATE POLICY "允许公开读取配置"
 ALTER TABLE products ADD COLUMN IF NOT EXISTS claim_link TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS qr_code TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
+
+-- ============================================
+-- 保活函数：前端管理员「💓」按钮通过 rpc('get_now') 调用
+-- 等价于在 SQL 编辑器里执行一次 select now();
+-- 未创建此函数时按钮会自动回退为轻量查询，功能不受影响
+-- ============================================
+CREATE OR REPLACE FUNCTION get_now()
+RETURNS TIMESTAMPTZ
+LANGUAGE sql
+STABLE
+AS $$ SELECT now(); $$;
+
+GRANT EXECUTE ON FUNCTION get_now() TO anon, authenticated;
