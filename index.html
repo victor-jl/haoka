@@ -110,6 +110,14 @@
   .tab-btn .tab-icon { font-size: 18px; line-height: 1; margin-bottom: 1px; }
   .tab-btn .tab-label { font-size: 10px; }
 
+  /* ===== 页尾友情链接 ===== */
+  .footer-bar { flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; padding: 7px 12px 7px; background: rgba(255,255,255,.65); backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); border-top: 1px solid #e8eaf6; font-size: 12px; color: #8a96ab; }
+  .footer-tag { color: #a2afc2; font-size: 11px; letter-spacing: 1px; }
+  .footer-tag::before { content: '· '; }
+  .friend-link { font-weight: 700; font-size: 14px; background: linear-gradient(135deg,#5c6bc0,#3949ab); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-decoration: none; letter-spacing: .5px; }
+  .friend-link:active { opacity: .7; }
+  .friend-meta { font-size: 11px; color: #a2afc2; }
+
   .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 9999; }
   .login-box { background: #fff; padding: 36px 28px; border-radius: 20px; box-shadow: 0 8px 40px rgba(92,107,192,.15); text-align: center; width: 320px; max-width: 88%; }
   .login-box h2 { margin-bottom: 4px; font-size: 18px; color:#1a1a2e; }
@@ -336,6 +344,12 @@
       </table>
       <div class="card-wrap" id="cardWrap"></div>
     </div>
+  </div>
+
+  <div class="footer-bar">
+    <span class="footer-tag">友情链接</span>
+    <a class="friend-link" href="https://victor-jl.github.io/haoka/" target="_blank" rel="noopener">大流量卡</a>
+    <span class="friend-meta">官方合作 · 三网通用 · 大流量低月租</span>
   </div>
 </div>
 
